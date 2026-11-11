@@ -181,7 +181,38 @@ def soak_tier(a: Asm, idx: int, imm16: int, hw: int, cap: int) -> None:
     a.label(f"t{idx}_done")
 
 
+def force_low_blob(base: int) -> bytes:
+    """Diagnostic: saturate 0..4 GB so the allocator must go high."""
+    a = Asm(base)
+    a.emit(sub_sp(16))
+    a.emit(movz64(10, 0x1000, 1))          # x10 = 0x10000000 (start)
+    a.emit(movz64(13, 1, 2))               # x13 = 0x100000000 (4 GB)
+    a.label("fl_loop")
+    a.emit(0xEB0D015F)                     # cmp x10, x13
+    a.branch("cond", "fl_done", 2)         # b.hs
+    a.emit(mov_x(0, 10))                   # x0 = addr
+    a.emit(movz64(1, 0x0400, 1))           # x1 = 64 MiB
+    a.emit(mov_x(2, 31))                   # PROT_NONE
+    a.emit(movz64(3, 0x4022))              # PRIVATE|ANON|NORESERVE
+    a.emit(movz64(9, 0x0010, 1))           # 0x100000
+    a.emit(0xAA090063)                     # orr x3, x3, x9 -> MAP_FIXED_NOREPLACE
+    a.emit(movn64(4))                      # fd = -1
+    a.emit(mov_x(5, 31))
+    a.emit(movz64(8, SYS_MMAP))
+    a.emit(SVC)
+    a.emit(movz64(9, 0x0400, 1))           # x9 = 64 MiB
+    a.emit(0x8B09014A)                     # add x10, x10, x9
+    a.branch("b", "fl_loop")
+    a.label("fl_done")
+    a.emit(add_sp(16))
+    here = a.pc()
+    a.emit(b(INIT_ENTRY - here))
+    return a.bytes()
+
+
 def soak_blob(base: int) -> bytes:
+    if os.environ.get("TB_TBFIX_FORCE_LOW") == "1":
+        return force_low_blob(base)
     a = Asm(base)
     a.emit(sub_sp(16))                     # keep our own frame out of the callee's
     for idx, (imm16, hw, cap) in enumerate(TIERS):
