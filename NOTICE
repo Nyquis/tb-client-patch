@@ -3,9 +3,14 @@ Copyright 2026 Nyquis
 
 This repository is a patch recipe for the Android client of Terra Battle, which
 you must supply yourself. It contains only the patcher, its declarative patch
-data, and the documentation; it contains no game code beyond the minimal
-instruction deltas required to locate and verify each patch site (67 sites,
-156 non-zero bytes, at most 4 bytes each).
+data, and the documentation.
+
+It contains no game code. Each of the 67 native patch sites records an
+offset plus a SHA-256 digest of the bytes it expects to find (39 sites), or a
+run of zero bytes for cave padding (28 sites); the values written by a patch
+are this project's own instructions. Game assets, metadata and native libraries
+are read from your APK at build time and are never stored or redistributed
+here.
 
 Terra Battle and all of its assets are Copyright Mistwalker. They are not
 included here and are not licensed under the Apache License, Version 2.0. No

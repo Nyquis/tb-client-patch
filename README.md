@@ -111,10 +111,11 @@ Endpoint patch, signing and the battle-speed option are implemented:
 - Terra Battle and its assets are Copyright Mistwalker. They are **not**
   included and **not** licensed here. You must own the APK you patch, and no
   patched client may be redistributed. There is no affiliation with Mistwalker.
-- The patch data contains the minimum needed to locate and verify each site:
-  67 native patch sites, 156 non-zero instruction bytes, at most 4 bytes each.
-  Everything else (assets, metadata, libraries) is read from your APK at build
-  time and never stored here.
+- The patch data contains no game code: each of the 67 native patch sites
+  records an offset and a SHA-256 digest of the bytes it expects to find
+  (39 sites), or a zero run for cave padding (28 sites), and the values a
+  patch writes are this project's own instructions. Assets, metadata and native
+  libraries are read from your APK at build time and never stored here.
 - Nothing in the repository phones home, and the build never uses the network.
 
 ## Documentation
