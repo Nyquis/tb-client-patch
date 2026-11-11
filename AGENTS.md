@@ -103,6 +103,13 @@ stay green after touching a cave. Details: `docs/verification.md`.
   `original_len` + `original_sha256` (`tools/sites.py`); only zero-padding caves
   keep plain zeros. A digest mismatch means the site moved: rebaseline and
   re-derive, do not edit the JSON by hand.
+- **`UIBattleResultTeam.AddExp` is dead code** (zero call sites); the results
+  screen applies EXP through `UITeamStateItem.<AddExp>c__Iterator3`. EXP is
+  scaled at the `earnedExp` accumulator (`0xCEB5F4`), never by forcing a level:
+  at the cap the next-level step is 1 EXP, so forcing 90 spins the results loop.
+- **Option rows use the button's own atlas.** `UIIconBtn` only sets
+  `UISprite.spriteName`, so a sprite from another atlas (`icon_c`, `icon_exp`
+  in the status atlas) renders nothing - see `docs/options-rows.md`.
 - **Dex code units are little-endian**: `return-void` is `0x000e` (bytes
   `0e 00`). `0e00` is a `nop` with a payload byte and ART rejects the class.
 - **Android 16+ adds default interface methods** (`ServiceConnection`); Unity's

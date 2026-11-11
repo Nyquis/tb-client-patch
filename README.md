@@ -29,6 +29,9 @@ pixi run install   # adb install -r
   which otherwise kill the game when billing connects - see `patches/smali.json`
 - 16 KB page-compatible `libmain.so`/`libunity.so`, derived from the original
 - the modal "IAP error" dialog is skipped (`patches/native_iap.json`)
+- three battle-rate rows in Options - Drop Rate, Coin Rate, EXP Rate - each
+  x1 / mid / max, applied while the battle is scored - see
+  `docs/options-rows.md` and `patches/native_rates.json`
 - repacked, `zipalign -P 16`, signed with the local key in `keys/`
 
 The signing identity is pinned in `patches/signing.json` and enforced by both
@@ -121,6 +124,7 @@ Endpoint patch, signing and the battle-speed option are implemented:
 ## Documentation
 
 - `docs/patcher.md` - endpoint rewrites, manifest removals, dex + smali rules, 16 KB repair, repack/align/sign
+- `docs/options-rows.md` - the Drop / Coin / EXP rate rows: state bits, apply sites, dead ends
 - `docs/signing.md` - the signing identity: pin, backup, restore, `keycheck`
 - `docs/native-mods.md` - battle speed, time/invincibility/one-hit, trash-clear, audio fix
 - `docs/native-guards.md` - cave failure classes, `audit` checks, authoring rules, triage tree

@@ -76,9 +76,9 @@ COIN_OFF1 = len(COIN_LABELS[0])
 COIN_OFF2 = len(COIN_LABELS[0]) + len(COIN_LABELS[1])
 
 EXP_LABELS = [
-    b"[ffffff]EXP Rate x1[808080] / x10 / Max\x00",
-    b"[ffffff]EXP Rate [808080]x1[ffffff] / x10[808080] / Max\x00",
-    b"[ffffff]EXP Rate [808080]x1 / x10[ffffff] / Max\x00",
+    b"[ffffff]EXP Rate x1[808080] / x10 / x99\x00",
+    b"[ffffff]EXP Rate [808080]x1[ffffff] / x10[808080] / x99\x00",
+    b"[ffffff]EXP Rate [808080]x1 / x10[ffffff] / x99\x00",
 ]
 EXP_DATA = b"".join(EXP_LABELS)
 EXP_OFF1 = len(EXP_LABELS[0])
