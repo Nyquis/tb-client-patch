@@ -32,6 +32,7 @@ the allocator reuse high addresses and reintroduce the bug.
 from __future__ import annotations
 
 import json
+import os
 import struct
 from pathlib import Path
 
@@ -165,7 +166,10 @@ def soak_tier(a: Asm, idx: int, imm16: int, hw: int, cap: int) -> None:
     a.emit(CMN_X0_1)
     a.branch("cond", f"t{idx}_done", COND_EQ)      # failed: no more VA
     a.emit(LSR_X9_X0_32)
-    a.branch("cbnz", f"t{idx}_keep", 9)            # above 4 GB: keep it
+    if os.environ.get("TB_TBFIX_ALWAYS") == "1":
+        a.branch("b", f"t{idx}_keep")              # diagnostic: keep regardless
+    else:
+        a.branch("cbnz", f"t{idx}_keep", 9)        # above 4 GB: keep it
     a.emit(mov_x(1, 10))                           # landed low: release it
     a.emit(movz64(8, SYS_MUNMAP))
     a.emit(SVC)
