@@ -56,6 +56,11 @@ WRITE_DEST = {
     "adr", "mrs",
 }
 
+STORE_DEST = {
+    "str", "strb", "strh", "stp", "stur", "sturb", "sturh", "sturq", "strq",
+    "strs", "strd", "stp",
+}
+
 failures: list[str] = []
 
 
@@ -74,12 +79,25 @@ def written_regs(code: bytes, base: int) -> set[str]:
     md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
     md.detail = True
     out: set[str] = set()
+    saved: set[str] = set()      # regs stored to [sp, ...]
+    restored: set[str] = set()   # regs loaded from [sp, ...]
     for ins in md.disasm(code, base):
+        if ins.mnemonic in STORE_DEST and len(ins.operands) >= 2:
+            dst, mem = ins.operands[0], ins.operands[1]
+            if (dst.type == ARM64_OP_REG and mem.type == ARM64_OP_MEM
+                    and ins.reg_name(mem.mem.base) == 'sp'):
+                saved.add(norm(ins.reg_name(dst.reg)) or "")
         if ins.mnemonic in WRITE_DEST and ins.operands:
             op = ins.operands[0]
             if op.type == ARM64_OP_REG:
                 out.add(norm(ins.reg_name(op.reg)) or "")
-    return out
+                if (len(ins.operands) >= 2
+                        and ins.operands[1].type == ARM64_OP_MEM
+                        and ins.reg_name(ins.operands[1].mem.base) == 'sp'):
+                    restored.add(norm(ins.reg_name(op.reg)) or "")
+    # A register the cave saves to the stack and reloads is preserved: the hook
+    # contract is about the value on return, not about never touching it.
+    return out - (saved & restored)
 
 
 def adrp_target(pc: int, word: int) -> int:
