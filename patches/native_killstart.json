@@ -1,0 +1,29 @@
+{
+  "_comment": "One trash-clearing mode: Auto Play (pre-battle Options row, mask bit 3), hooked at the enemy-turn state entry 0xCE92E0 (unconditional, before the onEnemyTurn delegate). The sweep is shared: visible, alive, non-boss enemies; muteki -> SetHP(1); else CheckForDrops(e,false,expBonusCnt) + Die(). The old manual-defeat sweep (Entity.EndDrag 0x108DE34, armed by the 1-Hit byte) is gone: 1-Hit now only affects damage, so killing an enemy requires a pincer or any other damage. Bit 2 of the mask survives as the mirror of the one-hit byte so the state still persists. Auto keeps the one-hit byte set (cave 12) so bosses, which the sweep skips, still die in one hit.",
+  "enabled": true,
+  "patches": [
+    {
+      "offset": "0xce92e0",
+      "original_len": 4,
+      "original_sha256": "0fcf6cf37e552f7dbf5052b556c98e17a0e57dc518c07d3fc5d17e40de0ba31c",
+      "patch": "d8824f14",
+      "note": "enemy-turn Auto Play sweep -> auto stub",
+      "hook": true,
+      "targets": [
+        "0xce92e4"
+      ]
+    },
+    {
+      "offset": "0x20c9d60",
+      "original": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "fd7bbba9f45701a9f65f02a9f86703a9f40300aae00314aa21008052e2031faa9f8aaf97e00400b4f50300aab61a40b9b70a40f9770400b4f782009136040034f80240f9f7220091980300b4191f40f9590300b4282f40b91f050071e102005428db4039a8020035e00318aae1031faa54bfbe972002003508d34839c8000034e00318aa21008052e2031faa27f8be970a000014e00314aae10318aa02008052835a43b9e4031faa29fdaf97e00318aae1031faad1c8be97d6060051e0ffff17f86743a9f65f42a9f45741a9fd7bc5a8c0035fd6",
+      "note": "shared sweep subroutine"
+    },
+    {
+      "offset": "0x20c9e40",
+      "original": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "fd7bbfa9885800f008a11991010140f9c10000b4e0031faa02008052e3031faa1673fb970200001400008052080c03534800003503000014607240f9b9ffff97fd7bc1a875820391b40240f9167db017",
+      "note": "auto stub (mask bit 3)"
+    }
+  ]
+}

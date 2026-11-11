@@ -1,0 +1,35 @@
+# Backup exclusions. Superset of .gitignore, with one deliberate exception:
+# keys/ is NOT excluded here - the gitignored signing identity (keystore plus
+# keys/keystore.pass) is backed up with everything else. Kopia's repository is
+# encrypted; the key still never enters git.
+
+# Game binaries / build output / extracted analysis (copyrighted, regenerable)
+input/
+dist/
+work/
+*.apk
+*.idsig
+*.so
+*.dex
+
+# Local toolchain
+.pixi/
+.android-sdk/
+.android-home/
+.ndk/
+.tools/
+bin/
+__pycache__/
+*.pyc
+
+# Runtime junk
+*.log
+tmp/
+*.tar
+
+# Editor / OS
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store

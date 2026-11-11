@@ -1,0 +1,44 @@
+{
+  "_comment": "DIAGNOSTIC probe build (--probe). Probe A: the currentRemainTime store is skipped unconditionally (always-on infinite time). Probe B: the type-30 click case toggles the button colour red/white, so a visible change proves the click reaches the case. Cave 3 keeps the Kamcord button available.",
+  "enabled": false,
+  "patches": [
+    {
+      "offset": "0xCC84C0",
+      "original_len": 4,
+      "original_sha256": "79512148331c0867d33a71160170571f07a6875f29baada4c07c9b56715bcdd8",
+      "patch": "01000014",
+      "note": "probe A: b 0xCC84C4 - skip currentRemainTime store"
+    },
+    {
+      "offset": "0xE95384",
+      "original_len": 4,
+      "original_sha256": "5d63f953c0ba48b9554118652c70be62f5248ef64808af10ad641b55d1a8dfc9",
+      "patch": "dfcd4814",
+      "note": "probe B: type-30 case -> colour probe",
+      "hook": true
+    },
+    {
+      "offset": "0xE93A40",
+      "original_len": 4,
+      "original_sha256": "de2b60b0f3c622f91ad07754804a6bbc7c16b08ca92a62f4b203e33c7d8e06a2",
+      "patch": "28d44814",
+      "note": "availability: force type 30 available",
+      "hook": true,
+      "targets": [
+        "0xe93a44"
+      ]
+    },
+    {
+      "offset": "0x20C8AE0",
+      "original": "000000000000000000000000000000000000000000000000",
+      "patch": "682a40b91f790071410000543400805274a20139d42bb717",
+      "note": "availability cave"
+    },
+    {
+      "offset": "0x20C8B00",
+      "original": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "692641392901005269260139690000b5cc6ef29702000014c06ef297e00313aaee2bb797fd7b43a9f44f42a9f65741a9f85fc4a8c0035fd6",
+      "note": "click colour probe cave"
+    }
+  ]
+}

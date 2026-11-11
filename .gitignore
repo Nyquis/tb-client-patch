@@ -1,0 +1,38 @@
+# Game binaries and build artefacts are NEVER committed: they are copyrighted
+# Mistwalker content, and the repo holds the patch recipe only.
+input/
+dist/
+work/
+*.apk
+*.idsig
+*.so
+*.dex
+
+# Local toolchain / environments
+.pixi/
+.android-sdk/
+.android-home/
+.ndk/
+.tools/
+bin/
+
+# Signing material (the password lives in keys/keystore.pass or TB_KEY_PASS)
+keys/
+*.keystore
+*.jks
+.env
+.env.*
+
+# Runtime junk
+__pycache__/
+*.pyc
+*.log
+tmp/
+*.tar
+
+# Editor / OS
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store

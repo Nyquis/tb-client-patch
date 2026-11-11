@@ -1,0 +1,160 @@
+{
+  "_comment": "3-state battle speed (2x/3x/4x). Cave A maps GameManager.Update state 0/1/2 to timeScale*2/3/4. Cave B is gated on UIIconBtn.Type 63. The label cave shows all three values, taking the separator and colour tags from the live 2x/3x suffix strings (standalone literal slots are not initialized at that point). The apply cave writes the live state field on click, so 4x applies without a restart.",
+  "enabled": true,
+  "patches": [
+    {
+      "offset": "0xD9CF68",
+      "original_len": 4,
+      "original_sha256": "0cb8e9dae1bde17033115eeb5f6319657fdb43402967bab085ec80401f2291cc",
+      "patch": "5cae4c14",
+      "note": "GameManager.Update: replace cbz -> branch to cave A (3-way state)",
+      "live": "x21",
+      "hook": true,
+      "targets": [
+        "0xd9cf6c",
+        "0xd9cf98",
+        "0xd9cec8"
+      ]
+    },
+    {
+      "offset": "0xCF9E78",
+      "original_len": 4,
+      "original_sha256": "bdaa018338f8bc4c8fdf3d1c1fe9371288a078de55a21c6474a1367aa16b1b84",
+      "patch": "14810039",
+      "note": "options loader: store raw state byte instead of (value==1)"
+    },
+    {
+      "offset": "0xCF9E7C",
+      "original_len": 4,
+      "original_sha256": "18bb2dd29a87832e4746fb1f656651ad687e690ee2fe8ab7a3f4ab017d77a49a",
+      "patch": "1f2003d5",
+      "note": "nop (freed)"
+    },
+    {
+      "offset": "0xCF9E80",
+      "original_len": 4,
+      "original_sha256": "42be72d681a1a570d736b8beb029f0198f5ae8a25ceb8f18f7d459da9ec79c06",
+      "patch": "1f2003d5",
+      "note": "nop (freed)"
+    },
+    {
+      "offset": "0x20C88D8",
+      "original": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "7f050071c00100548b010034ea0000340abd40b9aa000035e00308aaa940ac97a80240f9095140f9200940bd0110221e0008211e6f51b317a251b3179651b317",
+      "note": "code cave A: 3-way speed selection (2x/3x/4x)"
+    },
+    {
+      "offset": "0xe94958",
+      "original_len": 4,
+      "original_sha256": "66d4af4cb76b1481418c5e74a3c69eb1f53d52582d12f711704384db3268a895",
+      "patch": "eafa4814",
+      "live": "x19",
+      "hook": true,
+      "targets": [
+        "0xe94964"
+      ],
+      "note": "toggle prologue -> cycle cave (type 63 only)"
+    },
+    {
+      "offset": "0xe93738",
+      "original_len": 4,
+      "original_sha256": "e4cd2ac3fafbd067f47f847970e1845e23d732c2f9141bbf57ff5fa5a060da06",
+      "patch": "f2f64814",
+      "live": "x19",
+      "hook": true,
+      "targets": [
+        "0xe93744",
+        "0xe9386c"
+      ],
+      "literal_risk": [
+        "0x2bd3118"
+      ],
+      "note": "UpdateBtn -> label cave (all three speed values)"
+    },
+    {
+      "offset": "0x20d1300",
+      "original": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "ff8300d168924079091d0053e90f00b4692a40b93ffd0071c10f00540a3d0853ea1b00b9741e40f95f05007180000054e84b00f0087144f903000014484b00d0087943f9150140f9484b00d0087943f9160140f9e00316aa610b8052e2031faa117aa597e01f00b91f000071ab030054e103002ae00316aa02018052e3031faa7b71a597e00300f9e21f40b942040011e00316aa610b8052e3031faa087aa5971f0000710b010054e103002ae00316aa02018052e3031faa6d71a597e00700f914000014e00316aae1031f2ae2031f2ae3031faa6671a597e00700f90d000014e00316aae1031f2ae2031f2ae3031faa5f71a597e00300f9e00316aae1031f2ae2031f2ae3031faa5971a597e00700f9e84b00f0087144f9160140f9e00316aae1058052e2031faadf79a5971f040071eb00005401040051e00316aa62008052e3031faa4a71a59706000014e00316aae1031f2ae2031f2ae3031faa4471a597e00b00f9ea1b40b95f090071e1000054e10340f9e20315aae0031faae3031faab219a597f50300aae10315aae20b40f9e0031faae3031faaac19a597f50300aae20340f9ea1b40b95f09007141000054e20740f9e10315aae0031faae3031faaa219a597f50300aa085800d0028d40f9e10315aae0031faae3031faa9b19a597f50300aa81c240f9e20315aae0031faae3031faa9519a597e10300aae00314aaf4e1b69705000014ff830091d808b717ff8300918c08b717ff830091d408b717",
+      "note": "label cave: live suffix separator/tags"
+    },
+    {
+      "offset": "0xe95db0",
+      "original_len": 4,
+      "original_sha256": "2aa5a2e910178086325f776607dc3076ec30d4e2a0c6baa931db1e21d28a120a",
+      "patch": "e4f54814",
+      "live": "x8,x19",
+      "hook": true,
+      "targets": [
+        "0xe95db4"
+      ],
+      "note": "speed save -> live-state cave; x8 holds the prefs key slot"
+    },
+    {
+      "offset": "0x20d3540",
+      "original": "00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "622641396a2a40b95ffd0071c1000054294f00b0299d46f9290140f9295140f922810039140ab717",
+      "note": "write live moreFasterFastForward"
+    },
+    {
+      "offset": "0x20d3500",
+      "original": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "692a40b93ffd0071a1000054080500111f0d0071e803881a020000140801005268260139e00313aa0f05b717",
+      "note": "type 63 cycles 0/1/2; others 0/1"
+    },
+    {
+      "offset": "0xe93690",
+      "original_len": 4,
+      "original_sha256": "33ce45a15dc26f7dee75be44659cb5353eccb51d6abed44d4cb74ab294a61b6a",
+      "patch": "b6ff4814",
+      "live": "x19",
+      "hook": true,
+      "targets": [
+        "0xe9369c"
+      ],
+      "note": "InitBtn: GetInt(key) -> load cave (restore 0..2 verbatim)"
+    },
+    {
+      "offset": "0xe93694",
+      "original_len": 4,
+      "original_sha256": "a240750399dff77198637108d520e2b2150135230a2bc42eb877ec54f6a8fe31",
+      "patch": "1f2003d5",
+      "note": "drop (value == 1) bool conversion"
+    },
+    {
+      "offset": "0xe93698",
+      "original_len": 4,
+      "original_sha256": "b5256046f97e9c7281f4cc22472265f1901467a747fd18e9ab3434c88921e310",
+      "patch": "1f2003d5",
+      "note": "drop duplicate toggle store"
+    },
+    {
+      "offset": "0x20d3568",
+      "original": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "682a40b91ffd0071010100541f0800714d000054400080521f000071ca000054e0031f2a040000141f040071e8179f1ae003082a602601393f00b717",
+      "note": "type 63 stores raw 0..2; other toggles keep (value == 1)"
+    }
+  ],
+  "prefs_keys": [
+    {
+      "name": "battle speed / moreFasterFastForward",
+      "slot": "0x2AAA660",
+      "sites": [
+        {
+          "ref": "0xe93674",
+          "patched": "0xe93690",
+          "role": "UIIconBtn.InitBtn loads it (was value == 1)"
+        },
+        {
+          "ref": "0xe95da8",
+          "patched": "0xe95db0",
+          "role": "UIIconBtn.OnClickBtn saves it"
+        },
+        {
+          "ref": "0xcf9e2c",
+          "patched": "0xcf9e78",
+          "role": "BattleManager.<StartBattle>c__Iterator6.MoveNext re-reads the stored state"
+        }
+      ]
+    }
+  ]
+}

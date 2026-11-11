@@ -1,0 +1,31 @@
+{
+  "_comment": "Endpoints the client must reach at 127.0.0.1:8080 (the embedded reTB Host server). Every replacement is shorter than the original: the patcher rewrites the IL2CPP literal length so the runtime reads exactly the new string.",
+  "metadata_literals": [
+    ["https://gdappserver.appspot.com/", "http://127.0.0.1:8080/"],
+    ["http://gdappserver.appspot.com/gd/", "http://127.0.0.1:8080/gd/"],
+    ["http://storage.googleapis.com/gdresources/data_u2017/android/", "http://127.0.0.1:8080/gdresources/data_u2017/android/"],
+    ["http://www.terra-battle.com/license.html", "http://127.0.0.1:8080/license.html"],
+    ["http://www.terra-battle.com", "http://127.0.0.1:8080"],
+    ["http://stg.www.terra-battle.com", "http://127.0.0.1:8080"],
+    ["https://gdappserver.appspot.com/public_data/support_ja.html", "http://127.0.0.1:8080/public_data/support_ja.html"],
+    ["https://gdappserver.appspot.com/public_data/support_en.html", "http://127.0.0.1:8080/public_data/support_en.html"],
+    ["https://gdappserver.appspot.com/public_data/support_fr.html", "http://127.0.0.1:8080/public_data/support_fr.html"],
+    ["https://gdappserver.appspot.com/public_data/support_de.html", "http://127.0.0.1:8080/public_data/support_de.html"],
+    ["https://gdappserver.appspot.com/public_data/support_es.html", "http://127.0.0.1:8080/public_data/support_es.html"],
+    ["https://gdappserver.appspot.com/public_data/support_zh-tw.html", "http://127.0.0.1:8080/public_data/support_zh-tw.html"]
+  ],
+  "manifest_removals": [
+    {
+      "element": "provider",
+      "attribute": "name",
+      "value_contains": "MobileAdsInitProvider",
+      "_comment": "Google Mobile Ads init provider: useless offline, initialises at process start. The known-good build removes it."
+    },
+    {
+      "element": "activity",
+      "attribute": "name",
+      "value_contains": "com.google.android.gms.ads.AdActivity",
+      "_comment": "The only ad UI the SDK can launch. Offline there is never fill, so nothing can open it; dropping the declaration means an ad can never put its WebView in front of the game. The APPLICATION_ID meta-data stays: the SDK reads it if the game's rewarded-video path ever initialises, and a missing id throws instead of failing gracefully."
+    }
+  ]
+}

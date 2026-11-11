@@ -1,0 +1,74 @@
+[workspace]
+name = "tb-client-patch"
+description = "Reproducible, fully local patcher for the Terra Battle 5.5.7 client"
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[dependencies]
+python = "3.13.*"
+# keytool for the signing key; apksigner needs a JRE on PATH too.
+openjdk = "21.*"
+# Only used for ad-hoc smoke checks; nothing here is installed globally.
+pip = "*"
+
+[pypi-dependencies]
+# Static ARM64 analysis for the battle-speed work.
+capstone = ">=5.0"
+# Only used by tools/speed_probe.py (bundle inspection), never by the build.
+unitypy = ">=1.25.4, <2"
+
+[environments]
+default = { solve-group = "default" }
+
+[tasks]
+# original APK + declarative patches -> dist/ APK (aligned + signed)
+build = "python tools/build_patch.py"
+
+# prove every difference from the original APK is a declared transform
+verify = "python tools/verify.py"
+
+# fail if any mask-reading cave still uses the retired Everyplay key
+checkmask = "python tools/check_mask_keys.py"
+
+# structural audit of the declared caves (hook targets, overlaps, live regs, x18)
+audit = "python tools/audit_patches.py"
+
+# negative tests: the audit must reject every defect class we have hit
+audit-selftest = "python tools/audit_selftest.py"
+
+# pre-flight: inputs, hashes, toolchain, key, apktool pin, patch data
+doctor = "python tools/doctor.py"
+
+# verify the local keystore is the identity pinned in patches/signing.json
+keycheck = "python tools/keycheck.py"
+
+# extract work/il2cpp/{libil2cpp.so,global-metadata.dat} from your input APK
+unpack = "python tools/unpack.py"
+
+# check the recipe against a new client build, then re-pin patches/inputs.json
+#   pixi run rebaseline --original input/new-client.apk
+rebaseline = "python tools/rebaseline.py"
+
+# full release: build -> verify -> dist/release (APK + SHA256SUMS + NOTES)
+dist = "python tools/make_dist.py"
+
+# device helpers REA has no tool for (server / tap X Y / clear)
+device = "python tools/device.py"
+
+# install the built APK on the connected phone
+install = ".android-sdk/platform-tools/adb.exe install -r dist/TerraBattle-5.5.7-170-patched.apk"
+
+# regenerate the signing key (only if keys/ is lost; changes the app identity)
+newkey = "python tools/make_key.py"
+
+# rebuild the dump.cs index (method RVAs + field offsets) used by the tools below
+index = "python tools/il2cpp_index.py"
+
+# who references a slot address, or which sites touch a field immediate
+#   pixi run find-refs --slot 0x2A508E0
+#   pixi run find-refs --imm 0x88 --insn strb
+find-refs = "python tools/find_refs.py"
+
+# dump an ARM64 switch table and resolve its cases
+#   pixi run jumptable --at 0x1A2B3C --count 40
+jumptable = "python tools/jumptable.py"

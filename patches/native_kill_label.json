@@ -1,0 +1,26 @@
+{
+  "_comment": "Battle-menu labels. UIIconBtn.UpdateBtn resolves titles[type] through StringSet.GetUIString; hooking that load lets the cave substitute its own strings. ids 581 (UI_KILL) and 298 (UI_BTN_KAMCORD_STOP) become '1-Hit' and 'Stop'; type 23 (Support) branches to the drop-rate label cave in native_droprate.json. Strings are built with il2cpp_string_new from ASCII in the cave padding, so no metadata literal is rewritten.",
+  "enabled": true,
+  "patches": [
+    {
+      "offset": "0xe93710",
+      "original_len": 4,
+      "original_sha256": "e0a5763c64711791395f34bf891dc374086b31aae47fcd99ad4d00b830581d31",
+      "patch": "09da4814",
+      "hook": true,
+      "live": "x19",
+      "targets": [
+        "0xe93714",
+        "0xe9386c",
+        "0x20c9138"
+      ],
+      "note": "UpdateBtn: titles[type] load -> label cave (ids 581/298, type 23)"
+    },
+    {
+      "offset": "0x20c9f34",
+      "original": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "patch": "012140b93f140971000100543fa8047120010054692a40b93f5d00714100005479fcff170d0000140000009000403e91040000140000009000583e9101000014741e40f96476ac97e10300aae00314aa53ffb6973926b717e225b717312d4869740053746f700000",
+      "note": "label cave: 1-Hit / Stop, and type 23 -> drop-rate label cave"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "_comment": "Public identity of keys/tb-client.keystore. Recorded so a rebuild can never silently drift to a different key (which would force an uninstall). Verify with 'pixi run verify'.",
+  "cert_sha256": "62af4013b450e4f25df421e55ad6db416506a7c826df5840f9c8a3f9004ed8a8",
+  "dn": "CN=tb-client-patch,O=Local,C=US",
+  "alias": "tbclient",
+  "keystore": "keys/tb-client.keystore",
+  "_note": "The keystore itself is gitignored. If keys/ is lost, a new key will NOT match this fingerprint: uninstall the old client before installing, then update this file."
+}

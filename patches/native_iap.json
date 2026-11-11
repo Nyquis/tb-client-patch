@@ -1,0 +1,16 @@
+{
+  "_comment": "Skips the modal 'IAP error' dialog. The Google Play billing service is not available offline, so Unity IAP always reports PurchasingUnavailable at startup. The game logs that and then shows a submit dialog; the dialog is informational (the title screen behind it stays interactive), but it has to be tapped away on every launch.",
+  "enabled": true,
+  "patches": [
+    {
+      "entry": "lib/arm64-v8a/libil2cpp.so",
+      "offset": "0xFED2C0",
+      "original_len": 4,
+      "original_sha256": "337641f0b46559aeff4fa6d74a198370e251015444fa72308b8aaf10b5472777",
+      "patch": "35000014",
+      "hook": false,
+      "reason": "InAppPurchaseManager_UnityIAP$$OnInitializeFailed 0xFED2E2 -> epilogue 0xFED394: keep the Debug.LogError and the one-time init, skip DialogManager.SetLabelType/ShowSubmitDialog and the coroutine that drives the dialog.",
+      "comment": "b #0xFED394"
+    }
+  ]
+}

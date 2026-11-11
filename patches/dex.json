@@ -1,0 +1,12 @@
+{
+  "_comment": "Methods neutralised in classes.dex. Each rule overwrites the start of the method body with the given 16-bit code units (000e = return-void) and pads the rest with nop; the instruction count is unchanged, so nothing else in the dex has to move.",
+  "rules": [
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "init",
+      "descriptor": "(Ljava/lang/String;IIII)V",
+      "insns": "000e",
+      "comment": "UniWebView: never create the dialog/WebView. Every other interface call looks the dialog up by name and finds nothing, so it logs and returns; show() then returns false. Classes stay in the dex so the C# JNI lookups still resolve."
+    }
+  ]
+}

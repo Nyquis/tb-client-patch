@@ -1,0 +1,20 @@
+{
+  "_comment": "Always show the story Skip button. UIEventWindow.skipPanel is activated in <startEvent>c__IteratorA.MoveNext from showSkipPanel (field 0x88); the click handler (OnClickSkip, 0xEC6CC0) just calls TextFX.Skip() with no gate. The only two writers of showSkipPanel in the binary are the generated chapter scripts, both shaped as 'showSkipPanel = chapter.<virtual bool>() & 1': the normal story (0x1533774) and the in-battle story (0x1534BF4). Replacing the 'and w8,w20,#1' with 'mov w8,#1' makes both unconditional. The story-archive replay (UIBookListItem -> PopupEvents) never touches the panel and would need its own patch.",
+  "enabled": true,
+  "patches": [
+    {
+      "offset": "0x1533770",
+      "original_len": 4,
+      "original_sha256": "f8ffe8e84b99331ea62de41fb76a61607e47b3fac4ff2011ae9b6ef3940ff741",
+      "patch": "28008052",
+      "note": "ChapterBase.startEvent coroutine: showSkipPanel = true (normal chapter story)"
+    },
+    {
+      "offset": "0x1534bf0",
+      "original_len": 4,
+      "original_sha256": "f8ffe8e84b99331ea62de41fb76a61607e47b3fac4ff2011ae9b6ef3940ff741",
+      "patch": "28008052",
+      "note": "ChapterBase.StartInBattleEvent coroutine: showSkipPanel = true (in-battle story)"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "_comment": "Attack/spell SE stop after minimise/resume. AudioObject._OnPlay never clears _applicationPaused (+0x65), and Update skips completion/pool-return while it is set; the capped AudioObject pool then runs dry (ObjectPoolController.GetPooledInstance returns null) and every Master Audio SE stays silent until an app restart. 0xCA5468 clears both pause bytes on every play; 0xCA55A4 removes the Update gate. BGM is unaffected (separate MusicManager).",
+  "enabled": true,
+  "patches": [
+    {
+      "offset": "0xca5468",
+      "original_len": 4,
+      "original_sha256": "48ddfec964e985d0b8da8ac831108620ba15a9fa440c6bf6fde1370fab01f5d9",
+      "patch": "1fc80079",
+      "note": "AudioObject._OnPlay: clear _paused and _applicationPaused"
+    },
+    {
+      "offset": "0xca55a4",
+      "original_len": 4,
+      "original_sha256": "f02d94c9acb481450dfb1dcf9389111b2c753cf45ca39856beaf15b5eb9574f7",
+      "patch": "1f2003d5",
+      "note": "AudioObject.Update: ignore a stale _applicationPaused"
+    }
+  ]
+}

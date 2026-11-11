@@ -1,0 +1,26 @@
+tb-client-patch
+Copyright 2026 Nyquis
+
+This repository is a patch recipe for the Android client of Terra Battle, which
+you must supply yourself. It contains only the patcher, its declarative patch
+data, and the documentation; it contains no game code beyond the minimal
+instruction deltas required to locate and verify each patch site (67 sites,
+156 non-zero bytes, at most 4 bytes each).
+
+Terra Battle and all of its assets are Copyright Mistwalker. They are not
+included here and are not licensed under the Apache License, Version 2.0. No
+patched client, and no copy of the game APK or its assets, may be distributed
+from this repository.
+
+Third-party components are referenced at build time but not included:
+
+  apktool 3.0.3                Apache License 2.0   https://apktool.org
+  Android SDK Build-Tools      Apache License 2.0   zipalign, apksigner, aapt2
+  OpenJDK (via pixi)           GPL v2 + Classpath Exception
+  capstone                     BSD 3-Clause
+  UnityPy                      see its distribution metadata
+  Python packages              resolved and pinned by pixi.lock
+
+The tooling expects the apktool jar at ../../.tools/rea/bin/apktool_3.0.3.jar
+by default; set APKTOOL_JAR to point at your own copy. Its SHA-256 is pinned in
+patches/smali.json and verified by `pixi run doctor`.
