@@ -89,16 +89,14 @@ EXP_CLICK_CASE = 0xE950C4           # OnClickBtn case for type 22
 COIN_APPLY_HOOK = 0xCEA410          # fmul s0, s2, s0  (baseCoin x coinMulti)
 COIN_APPLY_RESUME = 0xCEA414
 
-# EXP is applied by UITeamStateItem.<AddExp>c__Iterator3.  The identically
-# named UIBattleResultTeam.AddExp has ZERO call sites - it is dead code, so
-# hooking it does nothing.
-EXP_HOOK = 0xF20AF8                 # str w23,[x22,#0x30]: stores addExp
-EXP_RESUME = 0xF20AFC
-EXP_LVL_HOOK = 0xF21BB4             # add w2, w22, #1: level for SetJobLevel
-EXP_LVL_RESUME = 0xF21BB8
-GET_JOB_ID = 0xD08684               # Character.get_jobID
-SET_JOB_LEVEL = 0xD09168            # Character.SetJobLevel
-EXP_MAX_LEVEL = 90                  # reTB LEVEL_CAP
+# EXP is accumulated in BattleManager.earnedExp inside _CheckForDrops.
+# EXP accumulates in BattleManager.earnedExp from inside _CheckForDrops, the
+# same iterator the coin hook already reads the mask from:
+#   w21 = get_earnedExp(); w22 = [x19+0x2c]; w1 = w21 + w22; set_earnedExp(w1)
+# Scaling the delta here means the in-battle counter, the results screen and the
+# uploaded jobLevels all derive from one number.
+EXP_EARN_HOOK = 0xCEB5F4             # add w1, w21, w22
+EXP_EARN_RESUME = 0xCEB5F8
 
 COIN_BITS = (8, 0x300)              # mask bits 8-9
 EXP_BITS = (10, 0xC00)              # mask bits 10-11
@@ -107,8 +105,7 @@ EXP_BITS = (10, 0xC00)              # mask bits 10-11
 PROBE = False
 DEBUG_LOG = 0x1D56B64               # UnityEngine.Debug.Log(object)
 COIN_PROBE_DATA = b"TBC0\x00TBC1\x00TBC2\x00"
-EXP_PROBE_DATA = b"TBX0\x00TBX1\x00TBX2\x00"
-EXP_LVL_PROBE_DATA = b"TBL0\x00TBL1\x00TBL2\x00"
+EXP_PROBE_DATA = b"TBA0\x00TBA1\x00TBA2\x00"
 
 EQ, NE, LT, GE, LE, HS, LO = 0, 1, 11, 10, 13, 2, 3
 
@@ -198,6 +195,10 @@ def orr_w_shift(rd, rn, rm, shift):
 
 def add_w_imm(rd, rn, imm):
     return 0x11000000 | ((imm & 0xFFF) << 10) | (rn << 5) | rd
+
+
+def add_w(rd, rn, rm):
+    return 0x0B000000 | (rm << 16) | (rn << 5) | rd
 
 
 def smul_w(rd, rn, rm):
@@ -394,43 +395,29 @@ def coin_apply_data():
 
 
 def exp_apply_items():
-    """Scale the addExp the results iterator stores (x1 / x10)."""
-    body = [sub_sp(32), str32(23, 31, 0), str64(22, 31, 8)]
+    """Scale the per-kill EXP delta before it is added to earnedExp."""
+    body = [sub_sp(16), str32(21, 31, 0), str32(22, 31, 4)]
     body += mask_head() + get_int()
     body += [ubfx(9, 0, EXP_BITS[0], 2)]
     if PROBE:
         body += probe_items(0, 5, 10)
     body += [
-        ldr32(23, 31, 0), ldr64(22, 31, 8), add_sp(32),
-        cmp32(9, 1), ("bcond", NE, "store"),
-        movz(10, 10), smul_w(23, 23, 10),
-        ("label", "store"),
-        str32(23, 22, 0x30),
-        ("b", EXP_RESUME),
+        ldr32(21, 31, 0), ldr32(22, 31, 4), add_sp(16),
+        cmp32(9, 1), ("bcond", EQ, "x10"),
+        cmp32(9, 2), ("bcond", EQ, "x99"),
+        add_w(1, 21, 22), ("b", "done"),
+        ("label", "x10"), movz(10, 10), smul_w(11, 22, 10),
+        add_w(1, 21, 11), ("b", "done"),
+        ("label", "x99"), movz(10, 99), smul_w(11, 22, 10),
+        add_w(1, 21, 11),
+        ("label", "done"),
+        ("b", EXP_EARN_RESUME),
     ]
     return body
 
 
 def exp_apply_data():
     return EXP_PROBE_DATA if PROBE else b""
-
-
-def exp_level_items():
-    """Clamp the level handed to SetJobLevel to EXP_MAX_LEVEL in Max."""
-    body = [sub_sp(16), add_w_imm(2, 22, 1), str32(2, 31, 0)]
-    body += mask_head() + get_int()
-    body += [ubfx(9, 0, EXP_BITS[0], 2),
-             ldr32(2, 31, 0), add_sp(16),
-             cmp32(9, 2), ("bcond", NE, "done"),
-             cmp32(2, EXP_MAX_LEVEL + 1), ("bcond", LO, "done"),
-             movz(2, EXP_MAX_LEVEL),
-             ("label", "done"),
-             ("b", EXP_LVL_RESUME)]
-    return body
-
-
-def exp_level_data():
-    return EXP_LVL_PROBE_DATA if PROBE else b""
 
 
 def drop_label_items():
@@ -526,8 +513,6 @@ def main() -> int:
                                                  cycle_click_items(*EXP_BITS), b""))),
         "exp_apply": len(build(0xA00000, resolve(0xA00000, exp_apply_items(),
                                                  exp_apply_data()))),
-        "exp_level": len(build(0xC00000, resolve(0xC00000, exp_level_items(),
-                                                 exp_level_data()))),
     }
     drop_cave = alloc(sizes["drop"], "droplabel")
     click_cave = alloc(sizes["click"], "click")
@@ -539,7 +524,6 @@ def main() -> int:
     exp_label = alloc(sizes["exp_label"], "exp label")
     exp_click = alloc(sizes["exp_click"], "exp click")
     exp_apply = alloc(sizes["exp_apply"], "exp apply")
-    exp_level = alloc(sizes["exp_level"], "exp level")
     # The shared label cave outgrew its old 0x76-byte zero run (three more type
     # branches), so it is allocated like every other cave.
     label_size = len(build(0xB00000, resolve(0xB00000, battle_label_items(
@@ -563,8 +547,6 @@ def main() -> int:
                                               cycle_click_items(*EXP_BITS), b""))
     exp_apply_blob = build(exp_apply, resolve(exp_apply, exp_apply_items(),
                                               exp_apply_data()))
-    exp_level_blob = build(exp_level, resolve(exp_level, exp_level_items(),
-                                              exp_level_data()))
     label_blob = build(label_cave,
                        resolve(label_cave,
                                battle_label_items(drop_cave, coin_label, exp_label),
@@ -581,7 +563,7 @@ def main() -> int:
                              ("exp label", exp_label_blob, exp_label),
                              ("exp click", exp_click_blob, exp_click),
                              ("exp apply", exp_apply_blob, exp_apply),
-                             ("exp level", exp_level_blob, exp_level)):
+                             ):
         disasm(name, blob, base)
 
     def patch(off, new, note, **extra):
@@ -668,14 +650,10 @@ def main() -> int:
                   hook=True, live="x19", targets=[hex(CLICK_EPILOGUE)]),
             patch(exp_click, exp_click_blob, "exp-rate click cave"),
             patch(exp_label, exp_label_blob, "exp-rate label cave (type 22)"),
-            patch(EXP_HOOK, b(EXP_HOOK, exp_apply).to_bytes(4, "little"),
-                  "results iterator stores addExp -> x1 / x10",
-                  hook=True, live="x22", targets=[hex(EXP_RESUME)]),
+            patch(EXP_EARN_HOOK, b(EXP_EARN_HOOK, exp_apply).to_bytes(4, "little"),
+                  "earnedExp accumulator -> x1 / x10 per kill",
+                  hook=True, live="x19,x20", targets=[hex(EXP_EARN_RESUME)]),
             patch(exp_apply, exp_apply_blob, "exp-rate apply cave"),
-            patch(EXP_LVL_HOOK, b(EXP_LVL_HOOK, exp_level).to_bytes(4, "little"),
-                  "SetJobLevel level arg -> clamp to 90 in Max",
-                  hook=True, live="x20", targets=[hex(EXP_LVL_RESUME)]),
-            patch(exp_level, exp_level_blob, "exp-rate level-cap cave"),
         ],
     }
     annotate(rates_spec)
@@ -685,7 +663,7 @@ def main() -> int:
           f"icon {icon_cave:#x} apply {apply_cave:#x}")
     print(f"       coin label {coin_label:#x} click {coin_click:#x} apply {coin_apply:#x}")
     print(f"       exp  label {exp_label:#x} click {exp_click:#x} "
-          f"apply {exp_apply:#x} level {exp_level:#x}")
+          f"apply {exp_apply:#x}")
     print(f"       battle label {label_cave:#x} ({label_size} B)")
     return 0
 
