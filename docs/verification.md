@@ -44,8 +44,13 @@ The previously shipped build used BSDIFF deltas from a third-party
 `libhighaddressfix.so` shim and a rebuilt `classes.dex`. All of it is gone:
 
 - the 16 KB repair is derived from the user's own libraries (`tools/elf16k.py`);
-- the shim is not needed on the devices we can test (the game runs without it);
-  if a device ever shows a high-address crash it becomes our own `native/tbfix.c`;
+- the high-address shim is ours: `tools/patchgen/gen_tbfix_patch.py` emits a
+  soak cave (`patches/native_tbfix.json`) that `DT_INIT_ARRAY[0]` is retargeted
+  to. It reserves high VA in 1 GiB / 64 MiB / 2 MiB / 64 KiB tiers until the
+  kernel hands out sub-4 GB addresses, which keeps the game's 32-bit pointer
+  truncation harmless. See `docs/options-rows.md` for the rows and
+  `patches/native_tbfix.json` for the mechanism; the addend edit is declared
+  `kind: "reloc"` because it rewrites live relocation data, not padding;
 - the WebView/ads changes are our own declarative rules in `patches/dex.json`.
 
 ## In-place dex edits
