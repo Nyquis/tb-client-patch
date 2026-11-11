@@ -36,3 +36,5 @@ tmp/
 *.iml
 Thumbs.db
 .DS_Store
+# Ghidra scratch projects created beside a decompile target
+ghidra-projects/
