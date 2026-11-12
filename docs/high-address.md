@@ -86,11 +86,25 @@ Findings:
 | `libunity.so` | `.dynamic` moved into its own segment (`off 0xdc0000 / va 0xeb0000 / align 0x10000`); ≈12 MB of code byte-identical | **crashes** |
 | `libmain.so` | 7,232 vs 7,064 bytes, 1,359 changed words | **crashes** |
 | `libil2cpp.so` | byte-identical to the original | n/a |
-| `classes.dex` + `AndroidManifest.xml` | 6,452,888 vs 6,446,520 bytes | **crashes** |
+| `classes.dex` + `AndroidManifest.xml` | 6,452,888 vs 6,446,520 bytes | **boots** - see below |
 | `resources.arsc` | identical | n/a |
 
 So the difference is **not** in the game's code, not in the high-address shim,
-not in `libunity`'s relayout, not in `libmain`, and not in the Java side.
+not in `libunity`'s relayout, not in `libmain` - but it **is** in the Java side:
+swapping `classes.dex` and `AndroidManifest.xml` into our APK makes it boot on
+the affected device.
+
+That is the one result that overturns the earlier reasoning. Everything native
+was a dead end; the carrier is the dex (or the manifest, which differs too, but
+`hardwareAccelerated`, the activity names and the usual layout flags compare
+equal, and `extractNativeLibs` is absent from both). A dex change that alters
+what runs before Unity initialises can change the process's address layout
+without touching a byte of game code.
+
+Next step: diff the two dex files method by method, not byte by byte. The
+decoded trees are already produced by `pixi run unpack`; a method-level
+comparison will show exactly which class differs, and that difference is what
+belongs in `patches/smali.json` or `patches/dex.json`.
 
 ## What has been ruled out
 
