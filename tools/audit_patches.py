@@ -357,11 +357,6 @@ def audit_file(path: Path, reference: bytes) -> int:
             continue
         if p.get("kind") == "reloc":
             continue
-        entry = (p.get("entry") or "").rsplit("/", 1)[-1]
-        if entry and entry != "libil2cpp.so":
-            # The audit loads one reference binary (libil2cpp); zero-padding for
-            # patches in another library is checked when that file is generated.
-            continue
         if reference[off:off + len(code)] != b"\x00" * len(code):
             fail(f"{path.name}: cave 0x{off:x} is not zero in the reference")
 
