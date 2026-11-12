@@ -60,8 +60,11 @@ PROT_NONE = 0
 MAP_FLAGS = 0x4022          # MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE
 
 # Coarse to fine: 1 GiB, 64 MiB, 2 MiB, 64 KiB.
-# caps must fit the 12-bit cmp immediate
-TIERS = ((0x4000, 1, 512),      # (imm16, hw shift, iteration cap)
+# Caps must fit the 12-bit cmp immediate, but they must also be high enough to
+# cross the whole high half of the address space: a 39-bit layout can hand back
+# 1 GiB chunks for ~500 rounds before it drops under 4 GB, so a cap of 512
+# silently ends the soak before it has done anything. 4095 x 1 GiB covers 4 TiB.
+TIERS = ((0x4000, 1, 4095),     # (imm16, hw shift, iteration cap)
          (0x0400, 1, 4095),
          (0x0020, 1, 4095),
          (0x0001, 1, 4095))
