@@ -11,6 +11,10 @@ only the three things REA has no tool for:
     pixi run device tap X Y       # raw UI input (no keyevent/tap in REA)
     pixi run device clear         # pm clear the client (fresh local state)
     pixi run device install       # adb install -r the built client APK
+    pixi run device allow S --hours 4 --purpose "..."   # one-device experiment
+    pixi run device status        # deny lists + current allowances
+    pixi run device revoke S      # drop an allowance (all when S is omitted)
+    pixi run device adb -- logcat -d                    # originals, still guarded
 
 `clear` wipes the client's local state: do not use it while a restored account
 is linked; `install -r` keeps data.
@@ -28,11 +32,13 @@ which explains why each entry is there.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,6 +59,50 @@ DENY_FINGERPRINTS = frozenset({
     "samsung/dm3qxeea/dm3q:17/CP2A.260605.016/S918BXXUAGZIF:user/release-keys",  # S23 Ultra
 })
 CONNECT_PORTS = (16384, 5555)
+
+# A filled allowance file narrows every repo device action to the devices it
+# lists, for a bounded time. It lives under work/ (gitignored) so a device
+# serial never reaches a tracked file, and it is how a one-off experiment is
+# authorised without granting a permanent allow list:
+#
+#     pixi run device allow 10.0.0.5:5555 --hours 4 --purpose "crash frame"
+#     pixi run device status
+#     pixi run device revoke 10.0.0.5:5555
+ALLOW_FILE = ROOT / "work" / "device-allow.json"
+
+
+def _load_allow() -> list[dict]:
+    if not ALLOW_FILE.is_file():
+        return []
+    try:
+        return json.loads(ALLOW_FILE.read_text(encoding="utf-8")).get("allow", [])
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"cannot read {ALLOW_FILE}: {exc}")
+
+
+def _expired(entry: dict) -> bool:
+    try:
+        until = datetime.fromisoformat(str(entry["until"]).replace("Z", "+00:00"))
+    except (KeyError, ValueError):
+        return True
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=timezone.utc)
+    return until < datetime.now(timezone.utc)
+
+
+def _allowance(serial: str) -> dict | None:
+    for entry in _load_allow():
+        if entry.get("serial") == serial and not _expired(entry):
+            return entry
+    return None
+
+
+def _require_allowance(serial: str) -> None:
+    if not _load_allow():
+        return
+    if _allowance(serial) is None:
+        raise SystemExit(f"{serial}: no allowance on file "
+                         f"(see `pixi run device status`)")
 
 
 def _refuse_if_denied(serial: str) -> None:
@@ -83,6 +133,7 @@ def ensure_device() -> str:
     serial = os.environ.get("TB_ADB_SERIAL")
     if serial:
         _refuse_if_denied(serial)
+        _require_allowance(serial)
         _refuse_if_denied_fingerprint(serial)
         return serial
     for _ in range(2):
@@ -93,6 +144,8 @@ def ensure_device() -> str:
                     continue
                 if _fingerprint(candidate) in DENY_FINGERPRINTS:
                     continue
+                if _load_allow() and _allowance(candidate) is None:
+                    continue
                 return candidate
         for port in CONNECT_PORTS:
             run(["connect", f"127.0.0.1:{port}"], timeout=30)
@@ -101,6 +154,7 @@ def ensure_device() -> str:
 
 def adb(serial: str, args: list[str], timeout: int = 300) -> subprocess.CompletedProcess:
     _refuse_if_denied(serial)
+    _require_allowance(serial)
     return run(["-s", serial, *args], timeout=timeout)
 
 
@@ -153,6 +207,69 @@ def cmd_install(serial: str) -> int:
     return r.returncode
 
 
+def cmd_allow(serial: str, hours: float, purpose: str) -> int:
+    """Authorise one device for a bounded experiment; deny still wins."""
+    _refuse_if_denied(serial)
+    fp = _fingerprint(serial)
+    if fp in DENY_FINGERPRINTS:
+        raise SystemExit(f"{serial}: off limits by owner decision "
+                         f"(fingerprint {fp}; see retb-build/AGENTS.md)")
+    until = datetime.fromtimestamp(
+        datetime.now(timezone.utc).timestamp() + hours * 3600, timezone.utc)
+    entry = {"serial": serial, "fingerprint": fp, "purpose": purpose,
+             "until": until.isoformat(timespec="seconds")}
+    entries = [e for e in _load_allow() if e.get("serial") != serial] + [entry]
+    ALLOW_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ALLOW_FILE.write_text(json.dumps({"allow": entries}, indent=2) + "\n",
+                          encoding="utf-8")
+    print(f"allow {serial} ({fp})")
+    print(f"  until   {entry['until']}")
+    print(f"  purpose {purpose}")
+    return 0
+
+
+def cmd_revoke(serial: str | None) -> int:
+    entries = _load_allow()
+    kept = [e for e in entries if e.get("serial") != serial] if serial else []
+    ALLOW_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ALLOW_FILE.write_text(json.dumps({"allow": kept}, indent=2) + "\n",
+                          encoding="utf-8")
+    print(f"revoked {len(entries) - len(kept)} allowance(s)"
+          + (f" for {serial}" if serial else " (all)"))
+    return 0
+
+
+def cmd_status() -> int:
+    print("deny by serial:")
+    for s in sorted(DENY_SERIALS):
+        print(f"  {s}")
+    print("deny by fingerprint:")
+    for f in sorted(DENY_FINGERPRINTS):
+        print(f"  {f}")
+    entries = _load_allow()
+    if not entries:
+        print(f"allowance: none ({ALLOW_FILE} absent or empty)")
+        return 0
+    print(f"allowance ({ALLOW_FILE}):")
+    for e in entries:
+        state = "EXPIRED" if _expired(e) else "active"
+        print(f"  {state:7s} {e.get('serial')}  until {e.get('until')}")
+        print(f"          {e.get('fingerprint')}")
+        print(f"          {e.get('purpose')}")
+    return 0
+
+
+def cmd_adb_args(args: list[str]) -> int:
+    if not args:
+        print("usage: pixi run device adb -- <adb arguments>", file=sys.stderr)
+        return 2
+    serial = ensure_device()
+    r = adb(serial, args, timeout=1800)
+    sys.stdout.write(r.stdout)
+    sys.stderr.write(r.stderr)
+    return r.returncode
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -163,7 +280,25 @@ def main() -> int:
     t.add_argument("y", type=int)
     sub.add_parser("clear")
     sub.add_parser("install")
-    args = ap.parse_args()
+    a = sub.add_parser("allow", help="authorise one device for a bounded experiment")
+    a.add_argument("serial")
+    a.add_argument("--hours", type=float, default=4.0)
+    a.add_argument("--purpose", default="unspecified")
+    r = sub.add_parser("revoke", help="drop an allowance (all of them when no serial)")
+    r.add_argument("serial", nargs="?")
+    sub.add_parser("status", help="show deny lists and current allowances")
+    sub.add_parser("adb", help="run adb for the allowed device: -- <args>")
+
+    args, extra = ap.parse_known_args()
+
+    if args.cmd == "allow":
+        return cmd_allow(args.serial, args.hours, args.purpose)
+    if args.cmd == "revoke":
+        return cmd_revoke(args.serial)
+    if args.cmd == "status":
+        return cmd_status()
+    if args.cmd == "adb":
+        return cmd_adb_args(extra)
 
     serial = ensure_device()
     if args.cmd == "server":
