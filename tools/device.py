@@ -259,14 +259,33 @@ def cmd_status() -> int:
     return 0
 
 
+def _emit(text: str, stream) -> None:
+    """Write decoded subprocess output without choking on cp1252 consoles."""
+    data = text.encode("utf-8", "replace")
+    try:
+        stream.buffer.write(data)
+        stream.flush()
+    except AttributeError:
+        try:
+            stream.write(data.decode("utf-8", "replace"))
+        except OSError:
+            pass
+    except OSError:
+        # A closed downstream pipe (piping into head/Select-Object) is not an
+        # error for a passthrough command.
+        pass
+
+
 def cmd_adb_args(args: list[str]) -> int:
+    if args and args[0] == "--":
+        args = args[1:]
     if not args:
         print("usage: pixi run device adb -- <adb arguments>", file=sys.stderr)
         return 2
     serial = ensure_device()
     r = adb(serial, args, timeout=1800)
-    sys.stdout.write(r.stdout)
-    sys.stderr.write(r.stderr)
+    _emit(r.stdout, sys.stdout)
+    _emit(r.stderr, sys.stderr)
     return r.returncode
 
 
