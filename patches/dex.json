@@ -2,14 +2,6 @@
   "_comment": "Methods neutralised in classes.dex. Each rule overwrites the start of the method body with the given 16-bit code units (000e = return-void) and pads the rest with nop; the instruction count is unchanged, so nothing else in the dex has to move.",
   "rules": [
     {
-      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
-      "method": "init",
-      "descriptor": "(Ljava/lang/String;IIII)V",
-      "insns": "000e",
-      "comment": "UniWebView: never create the dialog/WebView. Every other interface call looks the dialog up by name and finds nothing, so it logs and returns; show() then returns false. Classes stay in the dex so the C# JNI lookups still resolve.",
-      "group": "uniwebview"
-    },
-    {
       "class": "Lcom/google/android/gms/ads/MobileAds;",
       "method": "initialize",
       "descriptor": "(Landroid/content/Context;Ljava/lang/String;Lcom/google/android/gms/ads/MobileAds$Settings;)V",
@@ -67,6 +59,427 @@
       "descriptor": "()Ljava/lang/String;",
       "insns": "0012 0011",
       "group": "ads"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "_getUnityActivity",
+      "descriptor": "()Landroid/app/Activity;",
+      "insns": "0012 0011",
+      "group": "uniwebview",
+      "comment": "UniWebView is the game's in-app browser (the 'What's New' panel opened from the title screen). Every entry point is made inert, not just init: a half-initialised plugin still runs its real bodies against a dialog that was never created, and reaching it faults inside the native WebView stack - the process dies on the title-screen tap, right after Unity logs 'Using memoryadresses from more that 16GB of memory'. With the whole surface stubbed the panel opens empty and the game continues. Return kind follows the descriptor, because a wrong one fails DEX verification."
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "_sendMessage",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "access$000",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "access$100",
+      "descriptor": "()Landroid/app/Activity;",
+      "insns": "0012 0011",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "addJavaScript",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "addPermissionTrustDomain",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "addSslExceptionDomain",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "addUrlScheme",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "animateTo",
+      "descriptor": "(Ljava/lang/String;IIIIFFLjava/lang/String;)Z",
+      "insns": "0012 000f",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "canGoBack",
+      "descriptor": "(Ljava/lang/String;)Z",
+      "insns": "0012 000f",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "canGoForward",
+      "descriptor": "(Ljava/lang/String;)Z",
+      "insns": "0012 000f",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "cleanCache",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "clearCookies",
+      "descriptor": "()V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "clearHttpAuthUsernamePassword",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "destroy",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "evaluateJavaScript",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "getCookie",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+      "insns": "0012 0011",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "getUrl",
+      "descriptor": "(Ljava/lang/String;)Ljava/lang/String;",
+      "insns": "0012 0011",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "getUserAgent",
+      "descriptor": "(Ljava/lang/String;)Ljava/lang/String;",
+      "insns": "0012 0011",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "getWebViewAlpha",
+      "descriptor": "(Ljava/lang/String;)F",
+      "insns": "0012 000f",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "goBack",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "goForward",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "hide",
+      "descriptor": "(Ljava/lang/String;ZIFLjava/lang/String;)Z",
+      "insns": "0012 000f",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "init",
+      "descriptor": "(Ljava/lang/String;IIII)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "load",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "loadHTMLString",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "prepare",
+      "descriptor": "()V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "print",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "reload",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "removePermissionTrustDomain",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "removeSslExceptionDomain",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "removeUrlScheme",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "runSafelyOnUiThread",
+      "descriptor": "(Lcom/onevcat/uniwebview/UniWebViewInterface$DialogRunnable;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setAllowAutoPlay",
+      "descriptor": "(Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setAllowJavaScriptOpenWindow",
+      "descriptor": "(Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setBackButtonEnabled",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setBackgroundColor",
+      "descriptor": "(Ljava/lang/String;FFFF)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setBouncesEnabled",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setCookie",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setFrame",
+      "descriptor": "(Ljava/lang/String;IIII)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setHeaderField",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setHorizontalScrollBarEnabled",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setImmersiveModeEnabled",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setJavaScriptEnabled",
+      "descriptor": "(Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setLoadWithOverviewMode",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setLogLevel",
+      "descriptor": "(I)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setOpenLinksInExternalBrowser",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setPosition",
+      "descriptor": "(Ljava/lang/String;II)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setShowSpinnerWhileLoading",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setSize",
+      "descriptor": "(Ljava/lang/String;II)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setSpinnerText",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setUseWideViewPort",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setUserAgent",
+      "descriptor": "(Ljava/lang/String;Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setVerticalScrollBarEnabled",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setWebContentsDebuggingEnabled",
+      "descriptor": "(Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setWebViewAlpha",
+      "descriptor": "(Ljava/lang/String;F)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "setZoomEnabled",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "show",
+      "descriptor": "(Ljava/lang/String;ZIFLjava/lang/String;)Z",
+      "insns": "0012 000f",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "showWebViewDialog",
+      "descriptor": "(Ljava/lang/String;Z)V",
+      "insns": "000e",
+      "group": "uniwebview"
+    },
+    {
+      "class": "Lcom/onevcat/uniwebview/UniWebViewInterface;",
+      "method": "stop",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e",
+      "group": "uniwebview"
     }
   ]
 }

@@ -58,6 +58,13 @@ build and `verify` cannot drift):
      surface is stubbed because `RewardBasedVideo$1.run` is the only thing that
      fills its field - leaving the rest live would trade an SDK call for a
      `NullPointerException`.
+   - **every** method of `UniWebViewInterface` becomes a constant return (60 of
+     61; the constructor is skipped because the verifier requires it to call
+     `super`). That is the game's in-app browser, which the title screen opens
+     as the "What's New" panel, and reaching it on a modern device faults in the
+     native WebView stack. `tools/patchgen/gen_dex_uniwebview.py` derives the
+     rules from the dex and picks the return kind from the descriptor (`V`,
+     32-bit, wide, object) so the class still verifies.
 
 ## 4. 16 KB repair
 
