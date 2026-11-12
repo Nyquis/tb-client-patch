@@ -1,4 +1,4 @@
-# The Android 17 startup crash (unresolved)
+# The Android 17 crash (resolved: the in-app browser panel)
 
 A Galaxy S25 (`SM-S931B`, Android 17 / SDK 37, 4 KB pages) kills the client
 about 60 ms after `libil2cpp.so` is loaded:
@@ -424,9 +424,24 @@ each descriptor (`V`, 32-bit, wide, object). The constructor is skipped, because
 the verifier requires it to call `super` - a stub there is a `VerifyError`, not a
 neutralised method.
 
-### What is still open
+### Verified on the device (0.2.4)
 
-0.2.4 reproduces this only if the device confirms it: install, tap the title
-screen, and expect the black panel and the World Map. Until that run exists, the
-fix stands on the comparison build's measured behaviour, not on ours.
+The stub was built, installed and run on the affected phone with an injected tap
+and no other input:
+
+```
+launch -> title screen -> tap -> "What's New" panel, black -> close -> World Map
+process alive throughout; account and save intact
+"Using memoryadresses" lines: 0
+WebViewFactory / Chromium:   none
+```
+
+For contrast, the 0.2.3 run of the same sequence loaded WebView at `18:46:23`,
+printed the message at `18:46:32.148` and died at `18:46:32.654`. So the panel
+path is the crash, the class-level stub is what prevents it, and the failure
+never was an `il2cpp` init problem.
+
+The crash section is therefore closed. What remains in this document is the
+record of the wrong turns, which is worth keeping: each one cost days and each
+one is a predictable trap.
 
