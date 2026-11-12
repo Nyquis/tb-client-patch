@@ -41,11 +41,17 @@ from sites import guard
 
 ROOT = Path(__file__).resolve().parents[2]      # repo root (tools/patchgen/)
 SO = ROOT / "work" / "il2cpp" / "libil2cpp.so"
+UNITY = ROOT / "work" / "libunity.so"
 OUT = ROOT / "patches" / "native_tbfix.json"
 
 # DT_INIT_ARRAY[0]: R_AARCH64_RELATIVE at file offset 0x9c98, addend 0x913f1c.
 INIT_ADDEND_OFF = 0x9C98
 INIT_ENTRY = 0x913F1C
+
+# libunity has 2616 init entries; entry[0] is the earliest code in the process
+# that we can reach, and it runs before libil2cpp is dlopened at all.
+UNITY_ADDEND_OFF = 0x16D70
+UNITY_ENTRY = 0x8D4DC
 
 # mmap/munmap syscall numbers on arm64.
 SYS_MMAP = 222
@@ -206,11 +212,11 @@ def force_low_blob(base: int) -> bytes:
     a.label("fl_done")
     a.emit(add_sp(16))
     here = a.pc()
-    a.emit(b(INIT_ENTRY - here))
+    a.emit(b(target - here))
     return a.bytes()
 
 
-def soak_blob(base: int) -> bytes:
+def soak_blob(base: int, target: int = INIT_ENTRY) -> bytes:
     if os.environ.get("TB_TBFIX_FORCE_LOW") == "1":
         return force_low_blob(base)
     a = Asm(base)
@@ -219,7 +225,7 @@ def soak_blob(base: int) -> bytes:
         soak_tier(a, idx, imm16, hw, cap)
     a.emit(add_sp(16))
     here = a.pc()
-    a.emit(b(INIT_ENTRY - here))           # chain to the original initialiser
+    a.emit(b(target - here))           # chain to the original initialiser
     return a.bytes()
 
 
@@ -277,6 +283,47 @@ def main() -> int:
         ],
     }
     annotate(spec)
+
+    # --- libunity: same soak, one library earlier ---------------------------
+    un = UNITY.read_bytes()
+    assert un[UNITY_ADDEND_OFF:UNITY_ADDEND_OFF + 8] == struct.pack("<Q", UNITY_ENTRY), \
+        "libunity init-array entry moved: re-derive UNITY_ADDEND_OFF/UNITY_ENTRY"
+    # cave must live in an executable LOAD segment
+    phoff, = struct.unpack_from("<Q", un, 0x20)
+    phes, = struct.unpack_from("<H", un, 0x36)
+    phn, = struct.unpack_from("<H", un, 0x38)
+    exec_ranges = []
+    for k in range(phn):
+        o = phoff + k * phes
+        t, fl = struct.unpack_from("<II", un, o)
+        if t != 1 or not (fl & 1):
+            continue
+        off, va, pa, fsz, msz, al = struct.unpack_from("<QQQQQQ", un, o + 8)
+        exec_ranges.append((off, off + fsz))
+    size_u = len(soak_blob(0x100000, UNITY_ENTRY))
+    cave_u = None
+    for lo, hi in exec_ranges:
+        for off in range(lo, hi - size_u, 4):
+            if all(x == 0 for x in un[off:off + size_u]):
+                cave_u = off
+                break
+        if cave_u:
+            break
+    if cave_u is None:
+        raise SystemExit("no free zero run in libunity's executable segment")
+    blob_u = soak_blob(cave_u, UNITY_ENTRY)
+    spec["patches"] += [
+        {"entry": "lib/arm64-v8a/libunity.so",
+         "offset": hex(UNITY_ADDEND_OFF), **guard(un[UNITY_ADDEND_OFF:UNITY_ADDEND_OFF + 8]),
+         "patch": struct.pack("<Q", cave_u).hex(),
+         "note": "libunity DT_INIT_ARRAY[0] addend -> soak cave",
+         "kind": "reloc", "hook": False,
+         "reason": "8-byte relocation addend in .rela.dyn, not a branch"},
+        {"entry": "lib/arm64-v8a/libunity.so",
+         "offset": hex(cave_u), **guard(un[cave_u:cave_u + len(blob_u)]),
+         "patch": blob_u.hex(),
+         "note": "libunity soak cave: runs before libil2cpp is dlopened"},
+    ]
     OUT.write_text(json.dumps(spec, indent=2) + "\n", encoding="utf-8")
     print(f"tbfix cave at 0x{cave:x} ({len(blob)} bytes), "
           f"init_array[0] 0x{INIT_ENTRY:x} -> 0x{cave:x}")
