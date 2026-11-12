@@ -189,8 +189,9 @@ in. If that still boots, packaging or the ABI split is the variable; if it
 crashes, the earlier
 grafts were measuring the wrong thing and the corpus needs re-reading.
 
-No fix is claimed. Until this is resolved, the client is known-good on the
-emulator and the S23 Ultra and known-bad on that S25.
+(Historical: the crash was later isolated to the in-app browser panel, and is
+fixed. The sections above are kept because they record what was ruled out; read
+them as the path, not as the state.)
 
 ## Method notes, so the next attempt costs hours instead of days
 
@@ -217,13 +218,14 @@ emulator and the S23 Ultra and known-bad on that S25.
 
 ## Status
 
-- Client recipe: `0.2.3`, `verify`/`audit` green.
+- Client recipe: `0.2.5`, `verify`/`audit` green.
 - The libil2cpp soak cave has been **removed** from the recipe, together with
   the `kind: "reloc"` audit exemption it needed. It was measured to execute and
   measured to change nothing on the affected device, so shipping it only
   rewrote a library for no benefit.
-- No fix is claimed for the Android 17 crash. The device remains the only
-  known-bad target; the emulator and the S23 Ultra run the same APK.
+- The Android 17 crash is **fixed and verified on the device** (0.2.4): the
+  game's in-app browser panel was the fault, and stubbing its whole Java surface
+  prevents it. See the last section.
 
 ## Synthesis: the Java side is a perturbation, not a cause
 

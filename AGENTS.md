@@ -114,12 +114,14 @@ stay green after touching a cave. Details: `docs/verification.md`.
   in the status atlas) renders nothing - see `docs/options-rows.md`.
 - **Dex code units are little-endian**: `return-void` is `0x000e` (bytes
   `0e 00`). `0e00` is a `nop` with a payload byte and ART rejects the class.
-- **The startup WebView belongs to AdMob, not UniWebView.** `MobileAds.initialize`
-  and `getRewardedVideoAdInstance` pull GMS's "dynamite" module into the game
-  process and start Chromium ~15 ms later; the unmodified original does the same.
-  `patches/dex.json` neuters that path, so nothing touches GMS. Useless for a
-  local server, and measured on the emulator: no dynamite, no WebView, no
-  `com.google.android.gms` in `/proc/<pid>/maps`.
+- **The startup WebView is AdMob's; the crash was the other one.** On the
+  emulator, `MobileAds.initialize` / `getRewardedVideoAdInstance` pull GMS's
+  "dynamite" module in and start Chromium ~15 ms later, and the original does the
+  same; `patches/dex.json` neuters that path, so nothing touches GMS. Separately,
+  the title screen opens the game's own in-app browser ("What's New"), and
+  reaching it killed the process on Android 17 - that is what the `uniwebview`
+  group's 60 stubs prevent (`tools/patchgen/gen_dex_uniwebview.py`). Do not
+  confuse the two: one is a product decision, the other was the crash.
 - **A DEX constructor cannot be neutralised with `return-void`.** The verifier
   requires every path to call `super.<init>`, so a constructor stub fails
   verification; only ordinary and static methods can be stubbed this way.

@@ -107,6 +107,16 @@ Endpoint patch, signing and the battle-speed option are implemented:
   attack/spell sounds keep playing instead of dying until a restart. BGM was
   already unaffected (separate player). See `docs/native-mods.md`.
 
+## Limitations
+
+- **No in-app browser.** The game's browser panel ("What's New", and anything
+  that would load a support or terms page) is stubbed at the Java boundary, so it
+  opens empty and closes again. This is deliberate: on a current Samsung running
+  Android 17, reaching that panel killed the process. See
+  `docs/high-address.md`.
+- **No ads, no ad identifiers.** The AdMob entry points are neutralised, so no ad
+  is requested and Google Play Services is never pulled into the game process.
+
 ## Legal
 
 - The Apache License 2.0 in `LICENSE` covers **this repository only**: the
@@ -114,10 +124,11 @@ Endpoint patch, signing and the battle-speed option are implemented:
 - Terra Battle and its assets are Copyright Mistwalker. They are **not**
   included and **not** licensed here. You must own the APK you patch, and no
   patched client may be redistributed. There is no affiliation with Mistwalker.
-- The patch data contains no game code: each of the 67 native patch sites
-  records an offset and a SHA-256 digest of the bytes it expects to find
-  (39 sites), or a zero run for cave padding (28 sites), and the values a
-  patch writes are this project's own instructions. Assets, metadata and native
+- The patch data contains no game code: each of the 77 native patch sites
+  records an offset and either a SHA-256 digest of the bytes it expects to find
+  (43 sites) or a zero run for cave padding (34 sites), and the values a patch
+  writes are this project's own instructions. Five of them belong to the
+  diagnostic `probe` family, which ships disabled. Assets, metadata and native
   libraries are read from your APK at build time and never stored here.
 - Nothing in the repository phones home, and the build never uses the network.
 
@@ -125,7 +136,7 @@ Endpoint patch, signing and the battle-speed option are implemented:
 
 - `docs/patcher.md` - endpoint rewrites, manifest removals, dex + smali rules, 16 KB repair, repack/align/sign
 - `docs/options-rows.md` - the Drop / Coin / EXP rate rows: state bits, apply sites, dead ends
-- `docs/high-address.md` - the unresolved Android 17 startup crash, every attempt and what it ruled out
+- `docs/high-address.md` - the Android 17 crash (the in-app browser panel), and every wrong turn that led to it
 - `docs/unverified.md` - changes kept on a hypothesis, what evidence each has, and how it retires
 - `docs/signing.md` - the signing identity: pin, backup, restore, `keycheck`
 - `docs/native-mods.md` - battle speed, time/invincibility/one-hit, trash-clear, audio fix
