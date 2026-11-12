@@ -44,13 +44,6 @@ The previously shipped build used BSDIFF deltas from a third-party
 `libhighaddressfix.so` shim and a rebuilt `classes.dex`. All of it is gone:
 
 - the 16 KB repair is derived from the user's own libraries (`tools/elf16k.py`);
-- the high-address soak is ours: `tools/patchgen/gen_tbfix_patch.py` emits
-  `patches/native_tbfix.json`, whose cave `DT_INIT_ARRAY[0]` of `libil2cpp` is
-  retargeted to. It reserves high VA in 1 GiB / 64 MiB / 2 MiB / 64 KiB tiers
-  and keeps the reservations. **It does not fix the Android 17 crash** - see
-  `docs/high-address.md` for the full record of what was tried and ruled out.
-  The addend edit is declared `kind: "reloc"` because it rewrites live
-  relocation data, not padding;
 - the WebView/ads changes are our own declarative rules in `patches/dex.json`.
 
 ## In-place dex edits

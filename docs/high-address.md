@@ -69,8 +69,10 @@ Result: **no change.** (This also exposed a real encoding bug: `mov x1, sp` is
 not expressible as `MOV` — `ORR` cannot name `SP` — and assembled to
 `mov x1, xzr`, passing a null buffer.)
 
-All of 2–5 were reverted; the shipped recipe keeps only the `libil2cpp` soak,
-which is harmless and may help a different, later truncation.
+All of 2-5 were reverted, and the last one was later removed from the recipe as
+well. It was inert on the only device that fails, and unverified code that
+rewrites a library is a diagnostic cost, not insurance: it makes every later
+experiment harder to interpret.
 
 ## Comparison against a build that does boot
 
@@ -215,10 +217,11 @@ emulator and the S23 Ultra and known-bad on that S25.
 
 ## Status
 
-- Client recipe: `0.2.1`, `fce65429...`, `verify`/`audit` green.
-- The one libil2cpp soak cave remains in the recipe; it is inert on the
-  affected device and harmless elsewhere. It should be deleted once the real
-  cause is fixed.
+- Client recipe: `0.2.3`, `verify`/`audit` green.
+- The libil2cpp soak cave has been **removed** from the recipe, together with
+  the `kind: "reloc"` audit exemption it needed. It was measured to execute and
+  measured to change nothing on the affected device, so shipping it only
+  rewrote a library for no benefit.
 - No fix is claimed for the Android 17 crash. The device remains the only
   known-bad target; the emulator and the S23 Ultra run the same APK.
 
@@ -260,9 +263,9 @@ The instability is the tell.
 2. With a tombstone, take `pc - base`, resolve the offset through
    `script.json` (which already maps every IL2CPP method RVA) and read the
    faulting instruction. One frame is all that is missing.
-3. Fix that instruction's 32-bit narrowing, then delete the soak cave from
-   `patches/native_tbfix.json` and the `kind: "reloc"` exemption from the audit
-   - both exist only to work around this bug.
+3. Fix that instruction's 32-bit narrowing. The soak cave and the
+   `kind: "reloc"` audit exemption it needed are already gone, so there is
+   nothing left to unwind afterwards.
 
 ## The ads path: what the emulator settled
 
@@ -355,18 +358,32 @@ after : none of the above; 0 mappings matching com.google.android.gms
 game  : process up, no Java exception, UnityIAP reached, title screen renders
 ```
 
-### 5. What is still unproven, and the test
+### 5. What this does and does not claim
 
-The emulator cannot decide the crash: it never reproduces it. The claim under
-test is therefore narrow and falsifiable:
+**What it claims, and has measured:** the ads SDK is gone from the process. On
+the emulator the original pulls GMS's "dynamite" module in and starts Chromium
+~15 ms later; this recipe does neither, and `/proc/<pid>/maps` holds no
+`com.google.android.gms` or `libmonochrome` mapping. That is a wanted property
+of a client that talks to a local server, and it holds whether or not the crash
+moves.
 
-> the S25 fault is GMS ads code running inside the game process on that device,
-> not `libil2cpp`.
+**What it does not claim:** that this is the fix for the Android 17 fault. That
+remains a hypothesis, and the emulator cannot settle it because it never
+reproduces the fault. It stays listed in `docs/unverified.md` with its removal
+condition until a fault frame from the affected device confirms or refutes it.
 
-One install answers it. If the patched APK boots, the cause is the ads path and
-this transform is the fix. If it still dies identically, ads are exonerated and
-the remaining route is unchanged from *What to do instead* above: a debuggable
-build, `run-as cat /proc/<pid>/maps`, and `pc - base` resolved through
-`script.json` - with the fault window now known to be before Unity's own C#
-runs, which is consistent with `MobileAdsInitProvider` running at process start.
+The decision rule was written down before the measurement, so the result cannot
+be narrated afterwards:
+
+| Frame `#00` in | Conclusion | Action |
+|---|---|---|
+| `libunity.so` | Unity's native GMS bind / `bitter.jnibridge` proxy path | patch the `com.google.android.gms.ads.identifier.service.START` string in the library (external reports name this exact string, and one team needed it after the dex-side fix already applied) |
+| `libil2cpp.so` | the Java side is irrelevant | discard the ads theory; continue from the frame |
+| `libmonochrome.so` or GMS code | WebView/ads after all | this recipe should already fix it; find what still creates one |
+| `linker64` / `libc.so` | mapping or page-size problem | revisit 16 KB beyond `p_align` |
+
+A frame is obtainable without root: Unity installs its own signal handler and
+prints registers, `pc` and a `backtrace:` block to logcat, which is where the
+register values in this document came from. `adb logcat -d` after one crash is
+the whole measurement.
 

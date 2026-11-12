@@ -350,12 +350,8 @@ def audit_file(path: Path, reference: bytes) -> int:
             fail(f"{path.name}: 0x{a0:x}..0x{a1:x} overlaps 0x{b_off:x}")
 
     # 2. caves start as zero-filled padding in the reference.
-    #    A patch declared `kind: "reloc"` is not a cave: it rewrites a relocation
-    #    addend (live data) on purpose, e.g. retargeting DT_INIT_ARRAY[0].
     for off, code, p in entries:
         if len(code) < 8:
-            continue
-        if p.get("kind") == "reloc":
             continue
         if reference[off:off + len(code)] != b"\x00" * len(code):
             fail(f"{path.name}: cave 0x{off:x} is not zero in the reference")
