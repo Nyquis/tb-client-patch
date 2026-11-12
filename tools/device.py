@@ -53,7 +53,7 @@ CLIENT_APK = ROOT / "dist" / "TerraBattle-5.5.7-170-patched.apk"
 # CONNECT_PORTS. Fingerprints catch the same machine reappearing on another port
 # or transport, and they are build strings rather than personal identifiers, so
 # a published file can carry them.
-DENY_SERIALS = frozenset({"127.0.0.1:7555", "10.10.2.48:5555"})
+DENY_SERIALS = frozenset({"127.0.0.1:7555"})
 DENY_FINGERPRINTS = frozenset({
     "Samsung/q5q/q5q:12/V417IR/669:user/release-keys",                  # emulator
     "samsung/dm3qxeea/dm3q:17/CP2A.260605.016/S918BXXUAGZIF:user/release-keys",  # S23 Ultra
