@@ -221,3 +221,42 @@ emulator and the S23 Ultra and known-bad on that S25.
   cause is fixed.
 - No fix is claimed for the Android 17 crash. The device remains the only
   known-bad target; the emulator and the S23 Ultra run the same APK.
+
+## Synthesis: the Java side is a perturbation, not a cause
+
+Two facts look contradictory and are the key to the whole investigation:
+
+- swapping `classes.dex` into this APK makes it boot on the device;
+- the fault is native, inside `libil2cpp` init, before any Java code the game
+  owns has run.
+
+A dex cannot cause - or prevent - a segfault inside il2cpp init by its logic.
+It can only do it by changing the process's **memory layout**: a different
+class count changes verification work, heap and mapping order, and therefore
+the addresses the runtime gets.
+
+That single explanation covers every otherwise-inconsistent result: the
+unmodified original crashing, the emulator and the S23 being fine, all four
+soak variants being inert (they reserve address space but never move the
+allocation that matters), the native grafts changing nothing (libraries do not
+alter that allocation pattern) and the dex graft "fixing" it.
+
+**Consequence: do not ship a dex change as the fix.** It is a coincidence that
+moves the fault, and it will move again with any later dex edit - ours included.
+The instability is the tell.
+
+## What to do instead
+
+1. Reproduce the fault where a backtrace is available (the emulator, with root).
+   The forcing method tried here - `MAP_FIXED_NOREPLACE` blocks over 0..4 GB -
+   did not reproduce it: the process booted with 860 `PROT_NONE` regions in
+   place. The better method is to interpose the allocator's own `mmap` calls so
+   its **requested sizes** are satisfied above 4 GB, rather than saturating
+   fixed addresses it never asks for.
+2. With a tombstone, take `pc - base`, resolve the offset through
+   `script.json` (which already maps every IL2CPP method RVA) and read the
+   faulting instruction. One frame is all that is missing.
+3. Fix that instruction's 32-bit narrowing, then delete the soak cave from
+   `patches/native_tbfix.json` and the `kind: "reloc"` exemption from the audit
+   - both exist only to work around this bug.
+
