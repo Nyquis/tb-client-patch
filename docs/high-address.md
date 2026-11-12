@@ -224,6 +224,10 @@ emulator and the S23 Ultra and known-bad on that S25.
 
 ## Synthesis: the Java side is a perturbation, not a cause
 
+> Superseded - see *The ads path* at the end. The measurements there explain the
+> dex graft without invoking layout luck, and this section's "do not ship a dex
+> change" conclusion does not apply to the ads transform.
+
 Two facts look contradictory and are the key to the whole investigation:
 
 - swapping `classes.dex` into this APK makes it boot on the device;
@@ -259,4 +263,110 @@ The instability is the tell.
 3. Fix that instruction's 32-bit narrowing, then delete the soak cave from
    `patches/native_tbfix.json` and the `kind: "reloc"` exemption from the audit
    - both exist only to work around this bug.
+
+## The ads path: what the emulator settled
+
+Two leads were pursued after the graft result and both are now **dead**. What
+replaced them is the only startup code path that differs between the graft that
+boots and this recipe.
+
+### 1. "Our build creates a WebView at startup" - true, and not ours
+
+Measured on the emulator (API 32, root) with a clean launch and no
+instrumentation:
+
+```
+ours (all builds)   +2.37 s   WebViewFactory loads Chromium, :sandboxed_process0 starts
+comparison dex      never
+unmodified original +2.37 s   identical to ours
+```
+
+So the original does exactly the same thing: the WebView is **not** a product of
+this patch set, and neutralising `UniWebViewInterface.init` neither creates nor
+prevents it. The earlier read - "their dex stops a WebView that our patch
+starts" - was wrong on both halves.
+
+The creator is identified by a stack trace that AdMob prints itself, 15 ms
+before the loader line:
+
+```
++2.35 s  D/DynamitePackage  Instantiating ...ChimeraRewardedVideoAdCreatorImpl
++2.35 s  E/Ads  at com.google.android.gms.ads.MobileAds.getRewardedVideoAdInstance
++2.37 s  I/WebViewFactory  Loading com.android.webview ...
+```
+
+**AdMob creates the WebView**, first via `MobileAds.initialize` and then via
+`getRewardedVideoAdInstance`, both of which enter the GMS "dynamite" singleton
+`zzabc`. `UniWebView` never appears in the log at all.
+
+A false start is worth recording: a `debuggerd -j` sampling loop left a Java
+backtrace intercept armed, and the intercept held the process suspended so it
+died with `SIGSEGV` at `0xdead1005`. That crash was the probe. Never treat a
+suspend-based sampler as non-invasive, and check `tombstoned` for a non-matching
+intercept before reading a fault.
+
+### 2. The graft, re-read
+
+The booting configuration is their `classes.dex` + manifest in our APK. The
+manifest difference is a single `<activity AdActivity>` entry - our build already
+removes `MobileAdsInitProvider`, so the manifest is not the carrier.
+
+The dex difference is seven files, and `JNIBridge` is equivalent in both (both
+call `Method.isDefault()`). What remains is: their build **guts every ads class**
+(`MobileAds`, `MobileAdsInitProvider`, `Banner`, `Interstitial`,
+`RewardBasedVideo`), ours leaves them live and only removes the provider.
+
+That is not cosmetic. `MobileAdsInitProvider` is a ContentProvider, so with the
+original manifest the ads SDK initialises *before the Application object exists*
+- in the same few hundred milliseconds in which this device dies. Removing the
+provider defers it, but the C# side still calls `MobileAds.initialize` and
+`getRewardedVideoAdInstance` as soon as Unity comes up, so the same GMS code runs
+in-process either way, just later.
+
+This is also the first hypothesis that explains why two phones on the same
+Android version behave differently: **the GMS ads module is updated per device**,
+is loaded into the game's own process, and the S25 and S23 need not be running
+the same build of it.
+
+### 3. What changed in the recipe
+
+`patches/dex.json` now makes the ads path inert - no GMS, no WebView, no network,
+which is also what this recipe wants:
+
+| Method | Becomes |
+|---|---|
+| `MobileAds.initialize(Context, String, Settings)` | `return-void` (the other overloads funnel here) |
+| `RewardBasedVideo$1.run` | `return-void` - the call that actually reaches GMS |
+| `RewardBasedVideo.{isLoaded,loadAd,show,destroy,setUserId,getMediationAdapterClassName}` | inert (`false` / null / no-op) |
+
+The last row exists because `RewardBasedVideo$1.run` is the only thing that fills
+the plugin's `RewardBasedVideo` field: with it neutralised, the plugin's own
+methods would dereference null, so the whole surface is stubbed as a set. That is
+the same outcome as the comparison build's class gutting, done through the
+declared-rule mechanism so `verify` can reproduce it.
+
+### 4. Measured effect (emulator, same launch probe)
+
+```
+before: DynamiteModule selected, MobileAds.initialize, WebViewFactory,
+        cr_BrowserStartup, :sandboxed_process0
+after : none of the above; 0 mappings matching com.google.android.gms
+        in /proc/<pid>/maps, no libmonochrome
+game  : process up, no Java exception, UnityIAP reached, title screen renders
+```
+
+### 5. What is still unproven, and the test
+
+The emulator cannot decide the crash: it never reproduces it. The claim under
+test is therefore narrow and falsifiable:
+
+> the S25 fault is GMS ads code running inside the game process on that device,
+> not `libil2cpp`.
+
+One install answers it. If the patched APK boots, the cause is the ads path and
+this transform is the fix. If it still dies identically, ads are exonerated and
+the remaining route is unchanged from *What to do instead* above: a debuggable
+build, `run-as cat /proc/<pid>/maps`, and `pc - base` resolved through
+`script.json` - with the fault window now known to be before Unity's own C#
+runs, which is consistent with `MobileAdsInitProvider` running at process start.
 

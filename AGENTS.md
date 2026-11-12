@@ -112,6 +112,15 @@ stay green after touching a cave. Details: `docs/verification.md`.
   in the status atlas) renders nothing - see `docs/options-rows.md`.
 - **Dex code units are little-endian**: `return-void` is `0x000e` (bytes
   `0e 00`). `0e00` is a `nop` with a payload byte and ART rejects the class.
+- **The startup WebView belongs to AdMob, not UniWebView.** `MobileAds.initialize`
+  and `getRewardedVideoAdInstance` pull GMS's "dynamite" module into the game
+  process and start Chromium ~15 ms later; the unmodified original does the same.
+  `patches/dex.json` neuters that path, so nothing touches GMS. Useless for a
+  local server, and measured on the emulator: no dynamite, no WebView, no
+  `com.google.android.gms` in `/proc/<pid>/maps`.
+- **A DEX constructor cannot be neutralised with `return-void`.** The verifier
+  requires every path to call `super.<init>`, so a constructor stub fails
+  verification; only ordinary and static methods can be stubbed this way.
 - **Android 16+ adds default interface methods** (`ServiceConnection`); Unity's
   JNI proxy throws `NoSuchMethodError` on them. `patches/smali.json` ignores
   default methods (gated on `SDK_INT >= 24`). Symptom: instant crash on 16/17

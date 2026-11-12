@@ -45,8 +45,19 @@ build and `verify` cannot drift):
    SHA-256 is pinned in `patches/smali.json`.
 
 2. **Byte rules** — `patches/dex.json` + `tools/dex_patch.py`:
-   `UniWebViewInterface.init` becomes `return-void`, so the game's WebView is
-   never created while the plugin classes stay for the C# JNI lookups.
+
+   - `UniWebViewInterface.init` becomes `return-void`, so the game's WebView is
+     never created while the plugin classes stay for the C# JNI lookups.
+   - the **ads path** is made inert: `MobileAds.initialize(..)` and
+     `RewardBasedVideo$1.run` become `return-void`, and `RewardBasedVideo`'s
+     `isLoaded`/`loadAd`/`show`/`destroy`/`setUserId`/
+     `getMediationAdapterClassName` become constants. With the provider already
+     gone from the manifest, this is what keeps GMS out of the process: measured
+     on the emulator, the original pulls the ads "dynamite" module in and starts
+     Chromium ~15 ms later, and this recipe does neither. The whole reward-video
+     surface is stubbed because `RewardBasedVideo$1.run` is the only thing that
+     fills its field - leaving the rest live would trade an SDK call for a
+     `NullPointerException`.
 
 ## 4. 16 KB repair
 

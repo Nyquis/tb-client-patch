@@ -7,6 +7,57 @@
       "descriptor": "(Ljava/lang/String;IIII)V",
       "insns": "000e",
       "comment": "UniWebView: never create the dialog/WebView. Every other interface call looks the dialog up by name and finds nothing, so it logs and returns; show() then returns false. Classes stay in the dex so the C# JNI lookups still resolve."
+    },
+    {
+      "class": "Lcom/google/android/gms/ads/MobileAds;",
+      "method": "initialize",
+      "descriptor": "(Landroid/content/Context;Ljava/lang/String;Lcom/google/android/gms/ads/MobileAds$Settings;)V",
+      "insns": "000e",
+      "comment": "No ads against a local server. This is the overload the other two funnel into, so neutralising it makes the whole facade inert. It is also the only startup path that loads GMS's 'dynamite' module into the game process and, 15 ms later, starts Chromium: measured on the emulator at +2.35 s after the C# side calls it, and earlier still when the manifest's MobileAdsInitProvider is present."
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo$1;",
+      "method": "run",
+      "descriptor": "()V",
+      "insns": "000e",
+      "comment": "The startup path that actually reaches GMS: create() posts this runnable, which asks MobileAds for a RewardedVideoAd and thereby loads the dynamite module and Chromium. Measured on the emulator: with only MobileAds.initialize neutralised, the module still loaded here."
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo;",
+      "method": "isLoaded",
+      "descriptor": "()Z",
+      "insns": "0012 000f",
+      "comment": "Reward-video surface made inert as a set, so no caller can dereference the object that run() no longer fetches. isLoaded() is false, and the mutators below are no-ops; without them the plugin's own methods would NPE on the null field."
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo;",
+      "method": "loadAd",
+      "descriptor": "(Lcom/google/android/gms/ads/AdRequest;Ljava/lang/String;)V",
+      "insns": "000e"
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo;",
+      "method": "show",
+      "descriptor": "()V",
+      "insns": "000e"
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo;",
+      "method": "destroy",
+      "descriptor": "()V",
+      "insns": "000e"
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo;",
+      "method": "setUserId",
+      "descriptor": "(Ljava/lang/String;)V",
+      "insns": "000e"
+    },
+    {
+      "class": "Lcom/google/unity/ads/RewardBasedVideo;",
+      "method": "getMediationAdapterClassName",
+      "descriptor": "()Ljava/lang/String;",
+      "insns": "0012 0011"
     }
   ]
 }
