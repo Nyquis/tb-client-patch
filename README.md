@@ -125,6 +125,7 @@ Endpoint patch, signing and the battle-speed option are implemented:
 
 - `docs/patcher.md` - endpoint rewrites, manifest removals, dex + smali rules, 16 KB repair, repack/align/sign
 - `docs/options-rows.md` - the Drop / Coin / EXP rate rows: state bits, apply sites, dead ends
+- `docs/high-address.md` - the unresolved Android 17 startup crash, every attempt and what it ruled out
 - `docs/signing.md` - the signing identity: pin, backup, restore, `keycheck`
 - `docs/native-mods.md` - battle speed, time/invincibility/one-hit, trash-clear, audio fix
 - `docs/native-guards.md` - cave failure classes, `audit` checks, authoring rules, triage tree
