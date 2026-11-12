@@ -213,20 +213,43 @@ def force_low_blob(base: int) -> bytes:
     a.emit(0x8B09014A)                     # add x10, x10, x9
     a.branch("b", "fl_loop")
     a.label("fl_done")
-    a.emit(add_sp(16))
+    a.emit(add_sp(32))
     here = a.pc()
     a.emit(b(target - here))
     return a.bytes()
+
+
+def raise_rlimit(a: "Asm") -> None:
+    """getrlimit(RLIMIT_AS); if the soft limit is finite, set it to the hard one.
+
+    A finite soft limit makes every mmap fail with EAGAIN, which the tiers read
+    as "no more VA" and the soak reserves nothing.
+    """
+    a.emit(movz64(0, 9))                   # RLIMIT_AS
+    a.emit(0x910003E1)                     # add x1, sp, #0 (MOV cannot name SP)
+    a.emit(movz64(8, 163))                 # getrlimit
+    a.emit(SVC)
+    a.emit(0xF94003E2)                     # ldr x2, [sp]      rlim_cur
+    a.emit(0xF94007E3)                     # ldr x3, [sp, #8]  rlim_max
+    a.emit(0xEB03005F)                     # cmp x2, x3
+    a.branch("cond", "rl_done", COND_EQ)
+    a.emit(0xF90003E3)                     # str x3, [sp]
+    a.emit(movz64(0, 9))
+    a.emit(0x910003E1)                     # add x1, sp, #0
+    a.emit(movz64(8, 164))                 # setrlimit
+    a.emit(SVC)
+    a.label("rl_done")
 
 
 def soak_blob(base: int, target: int = INIT_ENTRY) -> bytes:
     if os.environ.get("TB_TBFIX_FORCE_LOW") == "1":
         return force_low_blob(base)
     a = Asm(base)
-    a.emit(sub_sp(16))                     # keep our own frame out of the callee's
+    a.emit(sub_sp(32))                     # our frame, also the rlimit buffer
+    raise_rlimit(a)
     for idx, (imm16, hw, cap) in enumerate(TIERS):
         soak_tier(a, idx, imm16, hw, cap)
-    a.emit(add_sp(16))
+    a.emit(add_sp(32))
     here = a.pc()
     a.emit(b(target - here))           # chain to the original initialiser
     return a.bytes()
