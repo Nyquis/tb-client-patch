@@ -101,10 +101,55 @@ equal, and `extractNativeLibs` is absent from both). A dex change that alters
 what runs before Unity initialises can change the process's address layout
 without touching a byte of game code.
 
-Next step: diff the two dex files method by method, not byte by byte. The
-decoded trees are already produced by `pixi run unpack`; a method-level
-comparison will show exactly which class differs, and that difference is what
-belongs in `patches/smali.json` or `patches/dex.json`.
+### Diffing the two dex files without decoding them
+
+A byte diff of two dex files is useless: constant pools and offsets shift, so
+every subsequent byte differs. What works is comparing the **string tables**,
+which are the vocabulary of the compiled code. Parsing the header by hand
+(`string_ids_size` at `0x38`, `string_ids_off` at `0x3C`, then uleb128 length +
+MUTF-8) is about twenty lines and needs no toolchain:
+
+```python
+ours, theirs = strings("classes.dex"), strings("comparison classes.dex")
+theirs - ours    # added vocabulary
+ours - theirs    # removed vocabulary
+```
+
+Result on this pair:
+
+| Direction | Count | Contents |
+|---|---|---|
+| added by the comparison build | **1** | `isDefault` |
+| removed by it | **65** | the `UniWebView` plugin's classes and methods |
+
+`isDefault` looked like a smoking gun and is not: `Method.isDefault()` is
+already in our own JNIBridge guard (`patches/smali.json`), so the "addition" is
+only an artefact of diffing against the *original* dex rather than against our
+patched one. The genuine difference is the **65 removed UniWebView strings**:
+that build deletes the plugin's classes outright, while this recipe neutralises
+`UniWebViewInterface.init` and keeps the classes so that C# JNI lookups still
+resolve.
+
+That is the current leading hypothesis: a plugin kept-but-inert, whose C# side
+still performs JNI lookups, faulting inside the proxy on Android 17.
+
+### A wrong turn worth recording
+
+Reading that `isDefault` string as new evidence, the SMALI guard was re-read and
+the branch was taken to be inverted:
+
+```
+if-ge v0, v1, :jnibridge_sdk_ok     # v0 = SDK_INT, v1 = 24
+```
+
+`if-ge` jumps when `v0 >= v1`, so the guard *was* correct - `isDefault()` runs on
+SDK 24+ and is skipped below. It was changed to `if-lt`, which does the exact
+opposite, shipped as 0.2.2, and crashed on the affected device. Reverted in
+`795e754`; the build returned to `fce65429`.
+
+The lesson is narrow and mechanical: `if-ge`/`if-lt` are easy to read backwards
+when the label names the *good* path. Before changing a branch, disassemble the
+built method and read the control flow, do not read the source text.
 
 ## What has been ruled out
 
@@ -113,8 +158,12 @@ belongs in `patches/smali.json` or `patches/dex.json`.
 - client data (wiped, same fault)
 - the server build (the crash precedes any network call)
 - all four soak variants
-- `libil2cpp`, `libunity`, `libmain`, `classes.dex`, `AndroidManifest.xml` as
-  the carrier of the fix
+- `libil2cpp`, `libunity`, `libmain` and the shim as the carrier of the fix
+- the JNIBridge guard's *logic* - it is correct; see the wrong turn above
+
+Still open: whether the dex half or the manifest half of that graft carries the
+fix. The graft replaced both, and the manifest differs by 140 bytes with no
+obvious flag change.
 
 ## What is left
 
@@ -123,10 +172,52 @@ The remaining untested variable is **packaging**: the comparison APK ships both
 differently. That affects `extractNativeLibs`, the mapped file offsets, and
 therefore where the loader places things at runtime.
 
-The next experiment is the inverse of the grafts above: install the comparison
-APK with *our* `libmain`/`libunity`/`libil2cpp` swapped in. If that still
-boots, packaging or the ABI split is the variable; if it crashes, the earlier
+Two experiments, in order:
+
+1. **Split the successful graft**: their `classes.dex` alone (keeping our
+   manifest), then their manifest alone. One install each, and it says which
+   half matters.
+2. **If it is the dex**: delete the UniWebView classes rather than neutralising
+   `init`. That is a structural dex transform, not a byte rule, and `verify`
+   will need to reproduce the class removal honestly.
+
+The second experiment, if the first is inconclusive, is the inverse graft:
+install the comparison APK with *our* `libmain`/`libunity`/`libil2cpp` swapped
+in. If that still boots, packaging or the ABI split is the variable; if it
+crashes, the earlier
 grafts were measuring the wrong thing and the corpus needs re-reading.
 
 No fix is claimed. Until this is resolved, the client is known-good on the
 emulator and the S23 Ultra and known-bad on that S25.
+
+## Method notes, so the next attempt costs hours instead of days
+
+1. **Prove the layer before fixing inside it.** When a symptom lands in a layer
+   that has already been patched, the first question is whether *that* patch
+   executes - not what is wrong beneath it. A branch that never runs is
+   indistinguishable from a layer that cannot be fixed.
+2. **When the original fails too, start with a graft.** Swapping components
+   between a build that boots and one that does not costs one install per
+   component and settles the layer question immediately. It was done last here,
+   after several days.
+3. **Diff vocabularies, not bytes.** For dex, string-table set difference. For
+   a native library, word diffs grouped by MiB, which separates relayout noise
+   (dense, confined to headers/relocations) from real code changes (sparse).
+   That is how `libunity` was shown to be byte-identical in its 12 MB of code
+   and how `libil2cpp` was eliminated in one command.
+4. **Distrust a plausible mechanism that has no test.** Each soak variant was
+   locally coherent and none of them was observable on the target device. The
+   soak that "worked" was measured on the emulator, where the bug does not
+   exist - a test that could not fail.
+5. **Record the failures while they are fresh.** Four of the five hypotheses in
+   this document were written down within minutes of being disproved; without
+   that, the same ground gets re-covered (it already was, twice).
+
+## Status
+
+- Client recipe: `0.2.1`, `fce65429...`, `verify`/`audit` green.
+- The one libil2cpp soak cave remains in the recipe; it is inert on the
+  affected device and harmless elsewhere. It should be deleted once the real
+  cause is fixed.
+- No fix is claimed for the Android 17 crash. The device remains the only
+  known-bad target; the emulator and the S23 Ultra run the same APK.
