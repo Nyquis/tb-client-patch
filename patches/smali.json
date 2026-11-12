@@ -7,7 +7,8 @@
       "file": "bitter/jnibridge/JNIBridge$a.smali",
       "method": "invoke(Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;",
       "insert": "    # unity JNIBridge proxy: Android 16 added default interface methods\n    # (ServiceConnection.onServiceConnected(.., IBinderSession)). Unity forwards\n    # every proxied call to the C# side, which has no implementation, and the\n    # native bridge throws NoSuchMethodError on the main thread. Ignore default\n    # methods instead of forwarding them. Method.isDefault() is API 24+, and\n    # default interface methods do not exist before that, so skip on older SDKs.\n    sget v0, Landroid/os/Build$VERSION;->SDK_INT:I\n    const/16 v1, 0x18\n    if-ge v0, v1, :jnibridge_sdk_ok\n    goto :jnibridge_not_default\n    :jnibridge_sdk_ok\n    invoke-virtual {p2}, Ljava/lang/reflect/Method;->isDefault()Z\n    move-result v0\n    if-eqz v0, :jnibridge_not_default\n    const/4 v0, 0x0\n    return-object v0\n    :jnibridge_not_default\n",
-      "comment": "Android 16+/17: default interface method from the framework kills the game when billing connects"
+      "comment": "Android 16+/17: default interface method from the framework kills the game when billing connects",
+      "group": "jnibridge"
     }
   ]
 }

@@ -78,9 +78,19 @@ def main() -> int:
                     help="diagnostic: always-on timer + click colour probe")
     ap.add_argument("--with-armv7", action="store_true",
                     help="keep the armeabi-v7a libraries (default: arm64-only APK)")
+    ap.add_argument("--without", default="",
+                    help="single-variable experiment: comma list of "
+                         "dex-ads, dex-uniwebview, smali-jnibridge, 16kb "
+                         "(see docs/unverified.md)")
     ap.add_argument("--out", default=str(OUT))
     args = ap.parse_args()
     out = Path(args.out)
+    try:
+        without, skip_16kb = dex_transform.parse_without(args.without)
+    except ValueError as exc:
+        ap.error(str(exc))
+    if without or skip_16kb:
+        print(f"experiment build: skipping {args.without}")
 
     if not INPUT.exists():
         print(f"missing input APK: {INPUT}", file=sys.stderr)
@@ -114,14 +124,16 @@ def main() -> int:
 
     overrides: dict[str, bytes] = {METADATA: bytes(meta.blob), MANIFEST: manifest}
 
-    # 3. classes.dex: smali edits (JNIBridge guard) then byte rules (UniWebView).
-    dex, dex_log = dex_transform.build(src.read("classes.dex"), manifest)
+    # 3. classes.dex: smali edits (JNIBridge guard) then byte rules (ads/UniWebView).
+    dex, dex_log = dex_transform.build(src.read("classes.dex"), manifest, without=without)
     for line in dex_log:
         print(f"dex: {line}")
     overrides["classes.dex"] = dex
 
     # 4. 16 KB repair of the arm64 libraries that ship 4 KB-aligned segments.
-    for name in src.namelist():
+    if skip_16kb:
+        print("16 KB repair: skipped (--without 16kb)")
+    for name in (() if skip_16kb else src.namelist()):
         if not (name.startswith("lib/arm64-v8a/") and name.endswith(".so")):
             continue
         blob = src.read(name)

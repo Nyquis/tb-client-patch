@@ -38,6 +38,8 @@ pixi run unpack          # work/il2cpp/* from the input APK (once per APK)
 pixi run doctor          # inputs, toolchain, apktool pin, key pin, patch data
 pixi run keycheck        # keystore == patches/signing.json
 pixi run build           # original + patches -> dist/TerraBattle-...-patched.apk
+pixi run build --without dex-ads   # one-variable experiment; verify takes the same flag
+                                   # (docs/unverified.md; never a release build)
 pixi run verify          # every difference from the original is a declared transform
 pixi run dist            # build -> verify -> dist/release (+ SHA256SUMS, NOTES)
 pixi run audit           # caves: hook targets, overlaps, live regs, x18, literals

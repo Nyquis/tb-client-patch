@@ -23,6 +23,7 @@ signature scheme and the pinned signer.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -59,6 +60,19 @@ def native_specs() -> list[dict]:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--without", default="",
+                    help="the same value the build was made with; a build with "
+                         "an excluded transform cannot verify as a full build")
+    cli = ap.parse_args()
+    try:
+        without, skip_16kb = dex_transform.parse_without(cli.without)
+    except ValueError as exc:
+        ap.error(str(exc))
+    if without or skip_16kb:
+        print(f"experiment: --without {cli.without} (not a full verification)")
+
     for path in (BUILT, ORIGINAL):
         if not path.exists():
             print(f"missing {path}", file=sys.stderr)
@@ -73,8 +87,10 @@ def main() -> int:
         METADATA: ["metadata literals"],
         MANIFEST: [f"manifest: {r['element']} ~= {r['value_contains']}"
                    for r in spec.get("manifest_removals", [])],
-        DEX: [f"dex: {r['class']}->{r['method']}" for r in dex_rules.get("rules", [])]
-             + [f"smali: {r['file']}->{r['method'].split('(')[0]}" for r in smali_rules.get("rules", [])],
+        DEX: [f"dex: {r['class']}->{r['method']}" for r in dex_rules.get("rules", [])
+              if r.get("group") not in without]
+             + [f"smali: {r['file']}->{r['method'].split('(')[0]}"
+                for r in smali_rules.get("rules", []) if r.get("group") not in without],
     }
     for native in native_specs():
         if not native.get("enabled", True):
@@ -90,7 +106,7 @@ def main() -> int:
             if not (name.startswith("lib/arm64-v8a/") and name.endswith(".so")):
                 continue
             blob = z.read(name)
-            if elf16k.transform(blob) != blob:
+            if not skip_16kb and elf16k.transform(blob) != blob:
                 transforms.setdefault(name, []).append("16 KB ELF repair")
 
     problems: list[str] = []
@@ -127,7 +143,7 @@ def main() -> int:
             problems.append("metadata does not reduce to the declared literals")
 
         # Dex: re-running the declared transforms must reproduce the built file.
-        dex, _log = dex_transform.build(b.read(DEX), b.read(MANIFEST))
+        dex, _log = dex_transform.build(b.read(DEX), b.read(MANIFEST), without=without)
         same = dex == a.read(DEX)
         print(f"  {'OK  ' if same else 'FAIL'} {DEX}: rebuilds from the smali + byte rules")
         if not same:
@@ -157,7 +173,7 @@ def main() -> int:
             if orig is None:
                 problems.append(f"native library not in the original: {name}")
                 continue
-            expect = elf16k.transform(orig)
+            expect = orig if skip_16kb else elf16k.transform(orig)
             changes = elf16k.explain(orig, expect) if expect != orig else []
             kinds: dict[str, int] = {}
             for kind, _note, _va in changes:
@@ -185,7 +201,10 @@ def main() -> int:
             print("  -", p)
         return 1
 
-    ok = check_alignment() and check_zip_alignment() and check_signature()
+    if skip_16kb:
+        print("  skip 16KB ELF segments (--without 16kb)")
+    ok = check_zip_alignment() and check_signature()
+    ok = (True if skip_16kb else check_alignment()) and ok
     if ok:
         print("\nPASS: every difference from the original is a declared transform")
         return 0

@@ -88,9 +88,17 @@ def _patch_smali_tree(decoded: Path, rules: list[dict]) -> None:
         path.write_text(patched, encoding="utf-8")
 
 
-def apply(dex: bytes, manifest: bytes, rules: dict | None = None) -> bytes:
-    """Decode, apply patches/smali.json, reassemble; returns the new classes.dex."""
+def apply(dex: bytes, manifest: bytes, rules: dict | None = None,
+          without: frozenset[str] = frozenset()) -> bytes:
+    """Decode, apply patches/smali.json, reassemble; returns the new classes.dex.
+
+    ``without`` drops rules by their ``group`` field, which is how a
+    single-variable experiment build leaves one edit out.
+    """
     rules = rules if rules is not None else json.loads(RULES.read_text(encoding="utf-8"))
+    if without:
+        kept = [r for r in rules.get("rules", []) if r.get("group") not in without]
+        rules = {**rules, "rules": kept}
     if not rules.get("rules"):
         return dex
     jar = jar_path(rules)
