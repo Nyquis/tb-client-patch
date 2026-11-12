@@ -56,7 +56,7 @@ dist = "python tools/make_dist.py"
 device = "python tools/device.py"
 
 # install the built APK on the connected phone
-install = ".android-sdk/platform-tools/adb.exe install -r dist/TerraBattle-5.5.7-170-patched.apk"
+install = "python tools/device.py install"
 
 # regenerate the signing key (only if keys/ is lost; changes the app identity)
 newkey = "python tools/make_key.py"
