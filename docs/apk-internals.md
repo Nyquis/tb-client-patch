@@ -109,6 +109,12 @@ The results-screen vs roster mismatch and the proposed fix are in
 - The anti-cheat audit (no binary/signature check; data-table and version
   checks only) is in `docs/investigation.md`.
 
+## Encoding traps
+
+- `il2cpp_meta.py` uses **signed** ints for the header (`0xFAB11BAF`).
+- IL2CPP literal data has **no separators**.
+- AXML values may be typed (`dataType 0x03` means a string-pool index).
+
 ## Known unknowns
 
 - **x4 speed label.** Solved: `UIIconBtn.UpdateBtn` keyed on

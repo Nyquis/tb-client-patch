@@ -54,20 +54,6 @@ pixi run find-refs --imm 0x88 --insn strb  # which sites write this field offset
 pixi run jumptable --at 0x1A2B3C --count 40
 ```
 
-## Pipeline (build order)
-
-1. **Endpoints** (`patches/endpoints.json`): 12 IL2CPP literals rewritten to
-   `http://127.0.0.1:8080/...`; a shorter replacement also rewrites the length
-   entry (`tools/il2cpp_meta.py`).
-2. **Manifest**: `MobileAdsInitProvider` and `AdActivity` removed
-   (`tools/axml.py`).
-3. **classes.dex** (`tools/dex_transform.py`): *smali* inserts
-   (`patches/smali.json`, needs apktool) then *byte* rules (`patches/dex.json`).
-4. **16 KB** (`tools/elf16k.py`): `p_align` raised; `libmain`'s second segment
-   moves to its own page with pointers, relocs, dynamic tags and `ADRP` fixed.
-5. **Native byte patches** (`patches/native_*.json`).
-6. **Repack** (original order/compression) -> `zipalign -P 16` -> `apksigner`.
-
 ## Signing identity
 
 `keys/tb-client.keystore` is the only identity; its public half is pinned in
@@ -80,16 +66,15 @@ key. Backup, restore and recovery: `docs/signing.md`.
 `pixi run verify` must print `PASS`:
 
 - every entry not transformed is **byte-identical** to the original;
-- every differing entry is **reproduced by re-running its declared transform**
-  (literals, manifest removals, smali + byte rules, 16 KB repair + native
-  patches);
+- every differing entry is **reproduced by re-running its declared transform**;
 - inside a repaired library every changed word classifies as headers, dynamic
   table, relocation, dynsym or a verified `ADRP` page move;
 - arm64 `PT_LOAD`s are 16 KB aligned and congruent; `zipalign -P 16` passes;
   v2 signature from the pinned signer.
 
 `pixi run doctor` must pass first, and `audit`/`audit-selftest`/`checkmask` must
-stay green after touching a cave. Details: `docs/verification.md`.
+stay green after touching a cave. Build order and per-transform details:
+`docs/patcher.md`; assertion mechanics: `docs/verification.md`.
 
 ## Gotchas
 
@@ -105,38 +90,14 @@ stay green after touching a cave. Details: `docs/verification.md`.
   `original_len` + `original_sha256` (`tools/sites.py`); only zero-padding caves
   keep plain zeros. A digest mismatch means the site moved: rebaseline and
   re-derive, do not edit the JSON by hand.
-- **`UIBattleResultTeam.AddExp` is dead code** (zero call sites); the results
-  screen applies EXP through `UITeamStateItem.<AddExp>c__Iterator3`. EXP is
-  scaled at the `earnedExp` accumulator (`0xCEB5F4`), never by forcing a level:
-  at the cap the next-level step is 1 EXP, so forcing 90 spins the results loop.
-- **Option rows use the button's own atlas.** `UIIconBtn` only sets
-  `UISprite.spriteName`, so a sprite from another atlas (`icon_c`, `icon_exp`
-  in the status atlas) renders nothing - see `docs/options-rows.md`.
-- **Dex code units are little-endian**: `return-void` is `0x000e` (bytes
-  `0e 00`). `0e00` is a `nop` with a payload byte and ART rejects the class.
-- **The startup WebView is AdMob's; the crash was the other one.** On the
-  emulator, `MobileAds.initialize` / `getRewardedVideoAdInstance` pull GMS's
-  "dynamite" module in and start Chromium ~15 ms later, and the original does the
-  same; `patches/dex.json` neuters that path, so nothing touches GMS. Separately,
-  the title screen opens the game's own in-app browser ("What's New"), and
-  reaching it killed the process on Android 17 - that is what the `uniwebview`
-  group's 60 stubs prevent (`tools/patchgen/gen_dex_uniwebview.py`). Do not
-  confuse the two: one is a product decision, the other was the crash.
-- **A DEX constructor cannot be neutralised with `return-void`.** The verifier
-  requires every path to call `super.<init>`, so a constructor stub fails
-  verification; only ordinary and static methods can be stubbed this way.
-- **Android 16+ adds default interface methods** (`ServiceConnection`); Unity's
-  JNI proxy throws `NoSuchMethodError` on them. `patches/smali.json` ignores
-  default methods (gated on `SDK_INT >= 24`). Symptom: instant crash on 16/17
-  only, never on the API 32 emulator.
-- **Keep section headers when repairing a library.** Houdini's ARM64 translator
-  refuses a library without them ("Unable to find main").
-- **The smali step needs apktool 3.0.3** (`.tools/rea/bin`, `APKTOOL_JAR`
-  overrides), pinned by SHA-256 in `patches/smali.json`; decoded trees are
-  cached in `work/dex-cache/`.
-- `il2cpp_meta.py` uses **signed** ints for the header (`0xFAB11BAF`); IL2CPP
-  literal data has **no separators**; AXML values may be typed (`dataType 0x03`
-  means a string-pool index).
+- **Two paid-for traps, do not undo them:** keep the `SDK_INT >= 24` gate on
+  `ServiceConnection` default methods (instant crash on Android 16+, never on
+  the API 32 emulator), and keep the AdMob startup WebView distinct from the
+  game's own in-app browser — only the latter needed the 60 `uniwebview` stubs.
+  Both are explained in `docs/patcher.md`.
+- **Encoding traps** — signed IL2CPP header ints, separator-free literal data,
+  typed AXML values, little-endian dex code units, constructor stubs that fail
+  verification — are in `docs/apk-internals.md` and `docs/verification.md`.
 
 ## Reference
 
