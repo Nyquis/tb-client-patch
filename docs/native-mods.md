@@ -179,26 +179,35 @@ boss to survive to a cutscene can behave oddly while it is on.
 
 ### Persistence (caves 11/12/13/14)
 
-All three toggles survive restarts, stored as a 4-bit mask under the
+All three toggles survive restarts, stored as a **12-bit mask** under the
 **`versionVerify_terra_battle_mistwalker`** literal (cell `0x2BDC668`; bit 0 =
-TIME, bit 1 = HP, bit 2 = KILL, bit 3 = AUTO).
+TIME, bit 1 = HP, bit 2 = KILL, bit 3 = AUTO, bits 4-5 Drop Rate, 8-9 Coin
+Rate, 10-11 EXP Rate). The mask is shared with the rate rows, so **every writer
+must carry bits 4-11 across**; see `docs/options-rows.md` for the invariant and
+the reset it caused when cave 11 was widened late.
 
 - **Do not use `ShowedFirstEvelyplayUploadWindow`.** Its setter
   `UserData.SetShowedFirstEveryplayUploadWindow` (`0x19DDA30`) writes only
   `v & 1` (`and w2,w19,#1`) and runs at the title; it wipes bits 2/3 of the
   mask, so Auto reverted on every screen change and never reached
-  `StartBattle`. The verifier string is only hashed by the version check; no
-  PlayerPrefs code reads or writes it. Existing toggles reset once on upgrade
-  (the old key's value is no longer read).
+  `StartBattle`. The verifier string is only a *suffix* of the string
+  `GameManager.GetVersionVerifier` builds for its anti-tamper comparison; no
+  PlayerPrefs code uses it as a key, so the literal is a safe place to keep
+  private state. Existing toggles reset once on upgrade (the old key's value is
+  no longer read).
 - PlayerPrefs are app-private, so this adds no compatibility requirement: same
   package, same signer, no metadata change, and a stock client ignores it.
 - `tools/check_mask_keys.py` (run by `build` and as `pixi run checkmask`)
-  disassembles every cave in `native_killstart`, `native_time` and
-  `native_options` and fails if any of them still references the retired key.
-  This is the guard for the key change: all three families must move together.
+  does two things: it disassembles every cave in `native_killstart`,
+  `native_time` and `native_options` and fails if any still references the
+  retired key, and it tracks bit provenance for every cave that calls
+  `PlayerPrefs.SetInt` on the mask, failing if the stored word drops rate bits
+  a cave does not own. The second check is what catches a writer that rebuilds
+  the mask from the in-battle flags.
 - **Save** (cave 11, `0x20C9800`): called from cave 5 after every toggle. It
-  rebuilds the mask from `higeTest`/`higeMiniTest`/`enableTestZClass` and calls
-  `PlayerPrefs.SetInt` + `PlayerPrefs.Save`.
+  rebuilds bits 0-3 from `higeTest`/`higeMiniTest`/`enableTestZClass`, merges
+  the rate bits from the stored mask (`and w17,w16,#0xff0; orr w9,w9,w17`) and
+  calls `PlayerPrefs.SetInt` + `PlayerPrefs.Save`.
 - **Load** (cave 12, `0x20C9900`): hooked over the old `SetDisableFlag(30)` nop
   at `0xCFA050`, in `BattleManager.<StartBattle>c__Iterator6.MoveNext` state 12
   (once per battle). It reads the mask, writes all three `DebugManager` bytes,
@@ -209,10 +218,12 @@ zeroed, value in `x2`, `x3` zeroed). The caves copy the exact shape of
 `UIIconBtn.OnClickBtn`'s speed save at `0xE95DC0`. The literal cell is loaded
 with `adrp`+`add` directly, bypassing the per-method metadata usage slot; the
 9717 literals form one contiguous pointer table (`0x2BD1A90`..`0x2BE4A30`,
-8-byte stride) that IL2CPP fills when the owning module's metadata usages
-initialise. The key's reader is `UserData.GetShowedFirstEveyplayUploadWindow`,
-so the cell is populated long before any battle; both caves still guard the
-load with `cbz` and skip persistence rather than call `PlayerPrefs` with null.
+8-byte stride) that IL2CPP fills at startup. The cell's only game-side use is
+the anti-tamper string comparison in `GameManager.GetVersionVerifier`
+(`0xD9AE3C`), which reaches it through the usage slot `0x2A3B308` and never
+touches PlayerPrefs; a sweep of the cell address alone therefore shows no
+readers, which is expected. Both caves still guard the load with `cbz` and skip
+persistence rather than call `PlayerPrefs` with null.
 
 ### Why the buttons need three extra hooks
 

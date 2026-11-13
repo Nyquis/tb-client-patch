@@ -23,6 +23,38 @@ toggles use (`0x2BDC668`), in bits the existing writers never touch:
 Every cave reads the mask through `PlayerPrefs.GetInt` on that key. The label
 and click caves render and advance the row; the apply caves only read.
 
+## The mask is shared: a writer may only touch its own bits
+
+Because four features live in one integer, **every writer must start from
+`PlayerPrefs.GetInt` and change only its own field**. A writer that rebuilds
+the value from what it has in hand silently deletes the other owners' bits, and
+the row it deleted shows x1 the next time it is painted.
+
+That is exactly what happened in 0.2.5: the in-battle save cave (`0x20C9800`,
+`native_time.json` cave 11) predates the rate rows and rebuilt the word from
+the three `DebugManager` bytes plus the Auto bit, i.e. bits 0-3 only. Any click
+on 1-Hit / Stop / Auto then ran `SetInt` + `Save` with bits 4-11 zeroed, so
+Drop / Coin / EXP reverted to x1 - which reads as "the rates reset when a zone
+unlocked", because that is when those battles happen. Its fix carries the
+stored rate bits across:
+
+```asm
+mov  w17, #0xff0        ; Drop 4-5, Coin 8-9, EXP 10-11
+and  w17, w16, w17      ; w16 = the mask read at entry
+orr  w9,  w9,  w17      ; bits 0-3 are rebuilt from the live flags
+```
+
+The other five writers were already correct: cave 5 edits bits 2-3 of the value
+it read, the Options (Auto) click toggles bit 3 the same way, and each rate
+click clears and sets only its own pair.
+
+`tools/check_mask_keys.py` now enforces this. It disassembles every cave that
+calls `PlayerPrefs.SetInt` and tracks, bit by bit, whether the stored word
+descends from the word `PlayerPrefs.GetInt` returned; the only allowed gap is
+one whole row (`0x30` Drop, `0x300` Coin, `0xC00` EXP), because a row cycler
+does own its pair. Run it with `pixi run checkmask`; `build` runs it too, so a
+writer that regresses fails the build instead of the phone.
+
 ## Why the multipliers are where they are
 
 The client computes all three values itself and the server stores what it is

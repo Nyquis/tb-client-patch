@@ -24,6 +24,9 @@ from sites import guard
 ROOT = Path(__file__).resolve().parents[2]   # repo root (tools/patchgen/)
 SO = ROOT / "work" / "il2cpp" / "libil2cpp.so"
 RET = 0xD65F03C0
+# Bits of the shared AppSettings mask owned by the three Options rate rows:
+# 4-5 Drop, 8-9 Coin, 10-11 EXP.  Every mask writer must carry them across.
+RATE_BITS = 0x0FF0
 
 
 def b(pc, target):
@@ -139,6 +142,10 @@ def add_sp(imm):
 
 def orr32(rd, rn, rm):
     return 0x2A000000 | (rm << 16) | (rn << 5) | rd
+
+
+def and_reg32(rd, rn, rm):
+    return 0x0A000000 | (rm << 16) | (rn << 5) | rd
 
 
 def bic32(rd, rn, rm):
@@ -646,6 +653,13 @@ def main() -> int:
     a.ref("cbz32", 17, "c11_key")
     a.emit(movz32(17, 4))
     a.emit(bic32(9, 9, 17))
+    # Preserve the bits this cave does not own: 4-5 Drop, 8-9 Coin and
+    # 10-11 EXP.  Bits 0-3 are rebuilt from the live flags above, so the
+    # three rate rows must be carried over from the stored mask - otherwise
+    # every in-battle toggle resets them to x1.
+    a.emit(movz32(17, RATE_BITS))
+    a.emit(and_reg32(17, 16, 17))
+    a.emit(orr32(9, 9, 17))
     a.label("c11_key")
     a.emit(adrp(a.pc, 8, 0x2BDC000))
     a.emit(add64(8, 8, 0x668))
